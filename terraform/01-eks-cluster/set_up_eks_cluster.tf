@@ -1996,7 +1996,7 @@ data:
 
 # if gets stuck, `terraform apply -target=helm_release.external_dns -auto-approve`
 # `terraform taint helm_release.external_dns`
-# `aws eks update-kubeconfig --name django-production9 --region us-east-1`
+# `aws eks update-kubeconfig --name django-production9 --region us-west-2`
 # `rm ~/.kube/config`
 resource "helm_release" "external_dns" {
   name       = "external-dns"
