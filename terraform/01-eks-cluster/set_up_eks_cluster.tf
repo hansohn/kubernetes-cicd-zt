@@ -2322,7 +2322,7 @@ module "db" {
   # All available versions: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html#PostgreSQL.Concepts
   # aws rds describe-db-engine-versions --default-only --engine postgres
   engine               = "postgres"
-  engine_version       = "16.2"
+  engine_version       = "16.6"
   family               = "postgres16" # DB parameter group
   major_engine_version = "16"         # DB option group
   instance_class       = "db.t4g.micro"
@@ -2522,7 +2522,7 @@ module "db_sonarqube" {
   # All available versions: https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/CHAP_PostgreSQL.html#PostgreSQL.Concepts
   # aws rds describe-db-engine-versions --default-only --engine postgres
   engine               = "postgres"
-  engine_version       = "16.2"
+  engine_version       = "16.6"
   family               = "postgres16" # DB parameter group
   major_engine_version = "16"         # DB option group
   instance_class       = "db.t4g.micro"
