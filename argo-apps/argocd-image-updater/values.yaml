@@ -26,7 +26,7 @@ authScripts:
       export HOME=/tmp
 
       # Retrieve the authorization token from AWS ECR
-      auth_token=$(aws ecr get-authorization-token --region us-east-1 --output text --query 'authorizationData[].authorizationToken')
+      auth_token=$(aws ecr get-authorization-token --region us-west-2 --output text --query 'authorizationData[].authorizationToken')
 
       # Decode the authorization token
       decoded_token=$(echo $auth_token | base64 -d)
