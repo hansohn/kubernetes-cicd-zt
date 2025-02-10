@@ -33,4 +33,5 @@ RUN chmod +x /entrypoint.sh
 # Use entrypoint to run collectstatic and start the server
 ENTRYPOINT ["/entrypoint.sh"]
 
+# test
 # https://liberbear.com/posts/python-nonroot-dockerfile/
