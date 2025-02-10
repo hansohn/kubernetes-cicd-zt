@@ -13,7 +13,7 @@ spec:
   goTemplateOptions: ["missingkey=error"]
   generators:
     - git:
-        repoURL: https://github.com/tbalza/kubernetes-cicd-zt.git
+        repoURL: https://github.com/hansohn/kubernetes-cicd-zt.git
         revision: HEAD
         directories:
           - path: argo-apps/*
@@ -66,7 +66,7 @@ spec:
     spec:
       project: "default"
       source:
-        repoURL: https://github.com/tbalza/kubernetes-cicd-zt.git # git@github.com:tbalza/kubernetes-cicd.git # check
+        repoURL: https://github.com/hansohn/kubernetes-cicd-zt.git # git@github.com:hansohn/kubernetes-cicd.git # check
         targetRevision: HEAD
         path: '{{.path.path}}'
         plugin: # maybe disabling this allows for git writeback (instead of kustomization)? use discover instead? # image updater kustomization writeback ignores this

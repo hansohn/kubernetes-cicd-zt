@@ -48,7 +48,7 @@ locals {
       value = random_password.sonarqube_admin_password.result
     }
 
-    # e.g. tbalza.net (used by ExternalDNS) (and argocd)
+    # e.g. hansohn.io (used by ExternalDNS) (and argocd)
     "domain" = {
       value = local.domain
     }
@@ -2227,7 +2227,7 @@ module "acm" {
   version = "5.0.1"
 
   # ACM cert for subdomains only
-  domain_name = "*.${local.domain}" # only for subdomains of *.tbalza.net, TLD is not included by default
+  domain_name = "*.${local.domain}" # only for subdomains of *.hansohn.io, TLD is not included by default
   zone_id     = var.CFL_ZONE_ID
 
   validation_method = "DNS"
