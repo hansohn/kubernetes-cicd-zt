@@ -1,4 +1,4 @@
 TF_ENVIRONMENT = "prod"
-TF_REGION      = "us-east-1"
-TF_DOMAIN      = "tbalza.net"
-TF_REPO_URL    = "https://github.com/tbalza/kubernetes-cicd-zt.git"
+TF_REGION      = "us-west-2"
+TF_DOMAIN      = "hansohn.io"
+TF_REPO_URL    = "https://github.com/hansohn/kubernetes-cicd-zt.git"

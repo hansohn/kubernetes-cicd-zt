@@ -72,7 +72,7 @@ eck-kibana:
     config:
       telemetry.optIn: false
       telemetry.allowChangingOptInStatus: false
-      #server.publicBaseUrl: https://kibana.tbalza.net # pending
+      #server.publicBaseUrl: https://kibana.hansohn.io # pending
     http:
       tls:
         selfSignedCertificate:
