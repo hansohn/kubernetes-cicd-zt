@@ -15,7 +15,7 @@ spec:
   generators:
     - git:
         repoURL: https://github.com/hansohn/kubernetes-cicd-zt.git
-        revision: HEAD
+        revision: refactor-terraform
         directories:
           - path: argo-apps/*
   strategy:
@@ -67,7 +67,7 @@ spec:
       project: "default"
       source:
         repoURL: https://github.com/hansohn/kubernetes-cicd-zt.git # git@github.com:hansohn/kubernetes-cicd.git # check
-        targetRevision: HEAD
+        targetRevision: refactor-terraform
         path: '{{.path.path}}'
         plugin: # maybe disabling this allows for git writeback (instead of kustomization)? use discover instead? # image updater kustomization writeback ignores this
           name: substitution
