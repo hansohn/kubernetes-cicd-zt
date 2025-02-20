@@ -18,11 +18,11 @@ pipeline {
                 container('jnlp') {
                     checkout scm: [
                         $class: 'GitSCM',
-                        branches: [[name: '*/main']],
+                        branches: [[name: '*/refactor-terraform']],
                         userRemoteConfigs: [[url: "${REPO_URL}"]] // this lets jenkins/github-plugin know the webhook ping is related to the repo
                     ]
                     script {  // correct usage of script block to handle Groovy scripting
-                        env.GIT_COMMIT = sh(script: "git rev-parse HEAD", returnStdout: true).trim()
+                        env.GIT_COMMIT = sh(script: "git rev-parse refactor-terraform", returnStdout: true).trim()
                         echo "Current GIT COMMIT: ${env.GIT_COMMIT}"
 
                         // retrieve the last committer's name

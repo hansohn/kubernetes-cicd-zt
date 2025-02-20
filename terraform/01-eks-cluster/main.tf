@@ -21,204 +21,202 @@ locals {
 
   # SSM Parameter values
   parameters = {
-    # aws
+    # cluster
     "aws_account_id" = {
-      name  = "aws/account_id"
+      name  = "/cluster/aws/account_id"
       value = local.aws_account_id
     }
     "aws_region" = {
-      name  = "aws/region"
+      name  = "/cluster/aws/region"
       value = local.aws_region
     }
-
-    # cluster
     "cluster_name" = {
-      name  = "cluster/name"
+      name  = "/cluster/name"
       value = local.name
     }
     "cluster_domain" = {
-      name  = "cluster/domain"
+      name  = "/cluster/domain"
       value = local.domain
     }
 
     # argocd
     "argo_cd_admin_password" = {
-      name  = "argo/cd/admin/password"
+      name  = "/argo/cd/admin/password"
       value = random_password.argocd_password.result
     }
     "argo_cd_ecr_domain" = {
-      name  = "argo/cd/ecr/domain"
+      name  = "/argo/cd/ecr/domain"
       value = split("/", module.ecr.repository_url)[0] # retains only the ecr domain <ecr domain>/<repo name>
     }
     "argo_cd_ecr_repo_name" = {
-      name  = "argo/cd/ecr/repo_name"
+      name  = "/argo/cd/ecr/repo_name"
       value = module.ecr.repository_name
     }
     "argo_cd_iam_repo_role_arn" = {
-      name  = "argo/cd/iam/repo_role_arn"
+      name  = "/argo/cd/iam/repo_role_arn"
       value = aws_iam_role.argocd_repo.arn
     }
     "argo_cd_iam_updater_role_arn" = {
-      name  = "argo/cd/iam/updater_role_arn"
+      name  = "/argo/cd/iam/updater_role_arn"
       value = aws_iam_role.argocd_image_updater.arn
     }
 
     # argocd image updater
     "argo_cd_image_updater_github_user" = {
-      name  = "argo/cd/image_updater/github/user"
+      name  = "/argo/cd/image_updater/github/user"
       value = var.ARGOCD_GITHUB_USER
     }
     "argo_cd_image_updater_github_token" = {
-      name  = "argo/cd/image_updater/github/token"
+      name  = "/argo/cd/image_updater/github/token"
       value = var.ARGOCD_GITHUB_TOKEN
     }
 
     # django
     "app_iam_role_arn" = {
-      name  = "app/iam/role_arn"
+      name  = "/app/iam/role_arn"
       value = aws_iam_role.django.arn
     }
     "app_django_debug" = {
-      name  = "app/django/debug"
+      name  = "/app/django/debug"
       value = "FALSE"
     }
     "app_django_secret_key" = {
-      name  = "app/django/secret_key"
+      name  = "/app/django/secret_key"
       value = random_password.django_secretkey.result
     }
     "app_db_name" = {
-      name  = "app/db/name"
+      name  = "/app/db/name"
       value = local.rds_dbname
     }
     "app_db_host" = {
-      name  = "app/db/host"
+      name  = "/app/db/host"
       value = split(":", module.db.db_instance_endpoint)[0] # regular output includes `endpoint:port`, this filters out the port
     }
     "app_db_port" = {
-      name  = "app/db/port"
+      name  = "/app/db/port"
       value = local.rds_port
     }
     "app_db_username" = {
-      name  = "app/db/username"
+      name  = "/app/db/username"
       value = local.rds_user
     }
     "app_db_password" = { # pending # make type secret after test
-      name  = "app/db/password"
+      name  = "/app/db/password"
       value = random_password.database_password.result # pending. figure out how not to include in tf state
     }
     "app_repo_url" = {
-      name  = "app/repo_url"
+      name  = "/app/repo_url"
       value = local.repo_url # right now the name of the cluster is being used for the app name # pending
     }
 
     # ecr
     # (used by Jenkins/Kaniko)
     "ecr_region" = {
-      name  = "ecr/region"
+      name  = "/ecr/region"
       value = local.aws_region
     }
     "ecr_repo_domain" = {
-      name  = "ecr/repo_domain"
+      name  = "/ecr/repo_domain"
       value = split("/", module.ecr.repository_url)[0] # retains only the ecr domain <ecr domain>/<repo name>
     }
     "ecr_repo_name" = {
-      name  = "ecr/repo_name"
+      name  = "/ecr/repo_name"
       value = module.ecr.repository_name
     }
     "ecr_repo_url" = {
-      name  = "ecr/repo_url"
+      name  = "/ecr/repo_url"
       value = module.ecr.repository_url
     }
 
     # elastic
     "elastic_api_roles" = {
-      name  = "elastic/superuser"
+      name  = "/elastic/superuser"
       value = "superuser" # pending move to argo-apps/elastic/secrets.yaml as "merge" in ExternalSecret
     }
     "elastic_api_password" = {
-      name  = "elastic/api/password"
+      name  = "/elastic/api/password"
       value = random_password.elastic_password.result
     }
     "elastic_api_username" = {
-      name  = "elastic/api/username"
+      name  = "/elastic/api/username"
       value = "elastic" # pending move to argo-apps/elastic/secrets.yaml as "merge" in ExternalSecret
     }
 
     # external-secrets
     "external_secrets_iam_role_arn" = {
-      name  = "externam_secrets/iam/role_arn"
+      name  = "/externam_secrets/iam/role_arn"
       value = aws_iam_role.external_secrets.arn
     }
 
     # grafana
     "grafana_admin_user" = {
-      name  = "grafana/admin/username"
+      name  = "/grafana/admin/username"
       value = "admin"
     }
     "grafana_admin_password" = {
-      name  = "grafana/admin/password"
+      name  = "/grafana/admin/password"
       value = random_password.grafana_password.result
     }
 
     # jenkins
     "jenkins_admin_username" = {
-      name  = "jenkins/admin/username"
+      name  = "/jenkins/admin/username"
       value = "admin"
     }
     "jenkins_admin_password" = {
-      name  = "jenkins/admin/password"
+      name  = "/jenkins/admin/password"
       value = random_password.jenkins_password.result
     }
     "jenkins_github_username" = {
-      name  = "jenkins/github/username"
+      name  = "/jenkins/github/username"
       value = var.ARGOCD_GITHUB_USER # not yet setup since repo is public
     }
     "jenkins_github_token" = {
-      name  = "jenkins/github/token"
+      name  = "/jenkins/github/token"
       value = var.ARGOCD_GITHUB_TOKEN # not yet setup since repo is public
     }
     "jenkins_iam_role_arn" = {
-      name  = "jenkins/iam/role_arn"
+      name  = "/jenkins/iam/role_arn"
       value = aws_iam_role.jenkins.arn
     }
 
     # prometheus
     "prometheus_iam_role_arn" = {
-      name  = "prometheus/iam/role_arn"
+      name  = "/prometheus/iam/role_arn"
       value = aws_iam_role.prometheus.arn
     }
 
     # sonarquebe
     "sonar_admin_password" = {
-      name  = "sonar/admin/password"
+      name  = "/sonar/admin/password"
       value = random_password.sonarqube_admin_password.result
     }
     "sonar_admin_password_current" = {
-      name  = "sonar/admin/password_current"
+      name  = "/sonar/admin/password_current"
       value = random_password.sonarqube_admin_password.result
     }
     "sonar_db_name" = {
-      name  = "sonar/db/name"
+      name  = "/sonar/db/name"
       value = local.sonar_rds_dbname
     }
     "sonar_db_host" = {
-      name  = "sonar/db/host"
+      name  = "/sonar/db/host"
       value = "jdbc:postgresql://${module.db_sonarqube.db_instance_endpoint}/${local.sonar_rds_dbname}" # `SONARQUBE_JDBC_URL` requires baked in interpolation # jdbc:postgresql://[host]:[port]/[database]
     }
     "sonar_db_port" = {
-      name  = "sonar/db/port"
+      name  = "/sonar/db/port"
       value = local.sonar_rds_port
     }
     "sonar_db_user" = {
-      name  = "sonar/db/username"
+      name  = "/sonar/db/username"
       value = local.sonar_rds_user
     }
     "sonar_db__password" = {
-      name  = "sonar/db/password"
+      name  = "/sonar/db/password"
       value = random_password.sonarqube_database_password.result
     }
     "sonar_db_token" = {
-      name  = "sonar/db/token"
+      name  = "/sonar/db/token"
       value = random_password.sonarqube_token.result
     }
   }
@@ -282,7 +280,7 @@ module "ssm-parameter" {
 
   for_each = local.parameters
 
-  name            = lookup(each.value, "name", each.value.key)
+  name            = lookup(each.value, "name", each.key)
   value           = lookup(each.value, "value", null)
   values          = lookup(each.value, "values", [])
   type            = lookup(each.value, "type", null)
@@ -330,22 +328,24 @@ module "eks" {
     coredns = {
       resolve_conflicts_on_update = "OVERWRITE"
       resolve_conflicts_on_create = "OVERWRITE"
-      addon_version               = "v1.11.1-eksbuild.9"
+      addon_version               = "v1.11.4-eksbuild.2"
       configuration_values = jsonencode({
         nodeSelector = {
           "role" = "core"
         }
       })
     }
+
     kube-proxy = {
       resolve_conflicts_on_update = "OVERWRITE"
       resolve_conflicts_on_create = "OVERWRITE"
-      addon_version               = "v1.29.3-eksbuild.2"
+      addon_version               = "v1.32.0-eksbuild.2"
     }
+
     vpc-cni = {
       resolve_conflicts_on_update = "OVERWRITE"
       resolve_conflicts_on_create = "OVERWRITE"
-      addon_version               = "v1.18.1-eksbuild.3"
+      addon_version               = "v1.19.2-eksbuild.1"
       before_compute              = true # Attempts to create VPC CNI before the associated nodegroups, EC2 bootstrap may still be needed
       configuration_values = jsonencode({
         env = {
@@ -359,7 +359,7 @@ module "eks" {
       resolve_conflicts_on_update = "OVERWRITE"
       resolve_conflicts_on_create = "OVERWRITE"
       service_account_role_arn    = module.ebs_csi_driver_irsa.iam_role_arn
-      addon_version               = "v1.30.0-eksbuild.1" # v1.6.2-eksbuild.0
+      addon_version               = "v1.39.0-eksbuild.1"
       configuration_values = jsonencode({
         #        storageClasses = [
         #          {
@@ -964,7 +964,7 @@ resource "aws_iam_role" "elastic_operator2" {
 
 # external secrets
 resource "aws_iam_role" "external_secrets" {
-  name               = "PrometheusRole"
+  name               = "ExternalSecretsRole"
   assume_role_policy = data.aws_iam_policy_document.eks_assume_role_policy.json
 }
 
@@ -1364,8 +1364,6 @@ resource "aws_vpc_security_group_egress_rule" "egress_allow_all" {
   security_group_id = aws_security_group.remote_access.id
   description       = "Egress Allow All"
 
-  from_port   = 0
-  to_port     = 0
   ip_protocol = "-1"
   cidr_ipv4   = "0.0.0.0/0"
 
@@ -1668,9 +1666,8 @@ data "aws_iam_policy_document" "argocd_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/aws/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/ecr/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/ecr/*",
     ]
   }
 }
@@ -1698,7 +1695,7 @@ data "aws_iam_policy_document" "imageupdater_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/argo/cd/image_updater/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/argo/cd/image_updater/*",
     ]
   }
 }
@@ -1726,8 +1723,8 @@ data "aws_iam_policy_document" "django_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/app/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/app/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*",
     ]
   }
 }
@@ -1755,7 +1752,7 @@ data "aws_iam_policy_document" "elastic_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/elastic/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/elastic/*",
     ]
   }
 }
@@ -1783,7 +1780,7 @@ data "aws_iam_policy_document" "fluent_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/elastic/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/elastic/*",
     ]
   }
 }
@@ -1817,11 +1814,11 @@ data "aws_iam_policy_document" "jenkins_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/app/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/aws/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/ecr/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/jenkins/*"
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/sonar/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/app/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/ecr/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/jenkins/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/sonar/*",
     ]
   }
 }
@@ -1849,7 +1846,7 @@ data "aws_iam_policy_document" "prometheus_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/grafana/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/grafana/*",
     ]
   }
 }
@@ -1858,7 +1855,7 @@ resource "aws_iam_policy" "prometheus_ssm_read_policy" {
   name        = "PrometheusSSMReadPolicy"
   description = ""
   path        = "/"
-  policy      = data.aws_iam_policy_document.prometheus_ssm_read_policy
+  policy      = data.aws_iam_policy_document.prometheus_ssm_read_policy.json
 }
 
 resource "aws_iam_role_policy_attachment" "prometheus_ssm_read_attach" {
@@ -1877,7 +1874,7 @@ data "aws_iam_policy_document" "sonarqube_ssm_read_policy" {
       "ssm:ListTagsForResource",
     ]
     resources = [
-      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/sonar/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/sonar/*",
     ]
   }
 }
@@ -2163,7 +2160,7 @@ module "acm" {
 
   validation_method = "DNS"
 
-  validation_record_fqdns = cloudflare_dns_record.validation[*].hostname
+  validation_record_fqdns = cloudflare_record.validation[*].hostname
 
   wait_for_validation    = true
   create_route53_records = false
@@ -2196,16 +2193,15 @@ provider "cloudflare" {
 }
 
 # Validate generated ACM cert by creating validation domain record
-resource "cloudflare_dns_record" "validation" {
+resource "cloudflare_record" "validation" {
   count = length(module.acm.distinct_domain_names)
 
   zone_id = var.CFL_ZONE_ID
-  name    = element(module.acm.validation_domains, count.index)["resource_record_name"]
+  name    = trimsuffix(element(module.acm.validation_domains, count.index)["resource_record_name"], ".")
   type    = element(module.acm.validation_domains, count.index)["resource_record_type"]
   content = trimsuffix(element(module.acm.validation_domains, count.index)["resource_record_value"], ".")
   ttl     = 60
   proxied = false
-
 
   depends_on = [
     helm_release.aws_load_balancer_controller,

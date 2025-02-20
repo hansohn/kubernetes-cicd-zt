@@ -23,7 +23,7 @@ pipeline {
                 container('jnlp') {
                     checkout scm: [
                         $class: 'GitSCM',
-                        branches: [[name: '*/main']],
+                        branches: [[name: '*/refactor-terraform']],
                         userRemoteConfigs: [[url: "${REPO_URL}"]] // this lets jenkins/github-plugin know the webhook ping is related to the repo
                     ]
                     script {  // correct usage of script block to handle Groovy scripting
