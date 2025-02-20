@@ -1,3 +1,4 @@
+---
 controller:
 #  containerEnvFrom: # loads all the secrets in one go as ENV instead of using https://external-secrets.io/v0.4.2/examples-jenkins-kubernetes-credentials/ or kubernetes-credentials-provider-plugin
 #    - secretRef:
@@ -5,7 +6,7 @@ controller:
 #  scriptApproval:
 #    - "staticMethod org.codehaus.groovy.runtime.DefaultGroovyMethods dump java.lang.Object" # required for "dump" in ecr plugin
   nodeSelector:
-    role: ci-cd # ci-cd # assigned to app node group for POC purposes
+    role: core # core # assigned to app node group for POC purposes
   sidecars:
     configAutoReload:
       enabled: false # require pod restart for config change. false allows to view current temporary jcasc
@@ -127,11 +128,11 @@ agent:
   namespace: jenkins # where agents are launched
   privileged: false # Agent privileged container # default: false
   nodeSelector: # breaks install (unless customJenkinsLabels is set?). breaks agent connection
-    role: ci-cd
+    role: core
 #    jenkins-agent: v1
 
   customJenkinsLabels: # [] # # Append Jenkins labels to the agent
-    - role: ci-cd
+    - role: core
     - jenkins-agent: v1
 
   #podLabels: # Custom Pod labels (an object with `label-key: label-value` pairs)

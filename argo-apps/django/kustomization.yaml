@@ -1,22 +1,24 @@
+---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: django # crucial for configMapGenerator
+namespace: django
+
 resources:
-- deployment.yaml
-- ingress.yaml
-- pvc.yaml
-- secrets.yaml
-- service.yaml
-- serviceaccount.yaml
-- job.yaml # workaround for applicationset not supporting env substitution, using `preservedFields` in the appset
-- rbac.yaml
+  - deployment.yaml
+  - ingress.yaml
+  - pvc.yaml
+  - secrets.yaml
+  - service.yaml
+  - serviceaccount.yaml
+  - job.yaml # workaround for applicationset not supporting env substitution, using `preservedFields` in the appset
+  - rbac.yaml
+
 configMapGenerator:
-- name: nginx-config
-  files:
-  - ../../django-todo/nginx/default.conf # load the nginx default.conf from the django project directory
-  # the images: def below seems to have seemingly hardcoded strings, but they are updated by image updater dynamically, since it has access to both ECR and github repo
-  # updating the cluster without changing the hardcoded `newName` string will make image updater not recognize the new ECR image. Waiting for image updater v2
-  #images:
-  #- name: django-production-kustomize
-  #  newName: ${ARGOCD_AWS_ECR_REPO}/${ARGOCD_AWS_CLUSTER_NAME} #
-images: [{name: django-production-kustomize, newName: 965345602646.dkr.ecr.us-west-2.amazonaws.com/django-prod, newTag: acb360af677899f12c2d23c32cdc5bf8de87c527}]
+  - name: nginx-config
+    files:
+      - ../../django-todo/nginx/default.conf # load the nginx default.conf from the django project directory
+    # the images: def below seems to have seemingly hardcoded strings, but they are updated by image updater dynamically, since it has access to both ECR and github repo
+    # updating the cluster without changing the hardcoded `newName` string will make image updater not recognize the new ECR image. Waiting for image updater v2
+    #images:
+    #- name: django-production-kustomize
+    #  newName: ${ARGOCD_AWS_ECR_REPO}/${ARGOCD_AWS_CLUSTER_NAME} #

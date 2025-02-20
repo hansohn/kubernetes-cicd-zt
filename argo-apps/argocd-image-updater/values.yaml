@@ -1,5 +1,6 @@
+---
 nodeSelector:
-  role: ci-cd
+  role: core
 
 serviceAccount: # not using credentials configured for Argo CD globally, instead retrieving secret for image updater git write-back annotation specifically
   create: false

@@ -1,3 +1,4 @@
+---
 controller:
   JCasC:
     configScripts:
@@ -45,7 +46,7 @@ controller:
                     label: "jenkins-jenkins-agent"
                     name: "default"
                     namespace: "jenkins"
-                    nodeSelector: "role=ci-cd"
+                    nodeSelector: "role=core"
                     nodeUsageMode: NORMAL
                     podRetention: "never"
                     serviceAccount: "default"

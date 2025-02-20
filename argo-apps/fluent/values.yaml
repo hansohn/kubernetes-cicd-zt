@@ -1,9 +1,10 @@
+---
 containerRuntime: containerd
 Kubernetes: true
 
 operator:
   nodeSelector:
-    role: "ci-cd"
+    role: "core"
 #  disableComponentControllers:
 #    fluentd:
 #      crdsEnable: false # ? "error": "incorrect value for `-disable-component-controllers` and it will not be proceeded (possible values are: fluent-bit, fluentd)"
@@ -20,7 +21,7 @@ fluentbit:
       memory: 25Mi
   logLevel: "error"
   nodeSelector:
-    role: "ci-cd"
+    role: "core"
   tolerations:
     - operator: Exists
 

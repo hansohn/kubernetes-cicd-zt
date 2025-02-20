@@ -1,3 +1,4 @@
+---
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -12,12 +13,12 @@ spec:
     spec:
       serviceAccountName: fluent-operator
       containers:
-      - name: kubectl-fluent-pass
-        image: bitnami/kubectl:latest
-        imagePullPolicy: IfNotPresent
-        command: # add fluent operator serviceAccount annotation
-        - /bin/sh
-        - -c
-        - |
-          kubectl patch sa fluent-operator -n fluent --type='merge' -p='{"metadata": {"annotations": {"eks.amazonaws.com/role-arn": "arn:aws:iam::${ARGOCD_AWS_ACCOUNT}:role/FluentRole"}}}'
+        - name: kubectl-fluent-pass
+          image: bitnami/kubectl:latest
+          imagePullPolicy: IfNotPresent
+          command: # add fluent operator serviceAccount annotation
+            - /bin/sh
+            - -c
+            - |
+              kubectl patch sa fluent-operator -n fluent --type='merge' -p='{"metadata": {"annotations": {"eks.amazonaws.com/role-arn": "arn:aws:iam::${AWS_ACCOUNT_ID}:role/FluentRole"}}}'
       restartPolicy: Never

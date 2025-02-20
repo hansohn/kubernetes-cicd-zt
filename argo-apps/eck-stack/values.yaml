@@ -1,3 +1,4 @@
+---
 eck-elasticsearch:
   enabled: true
   annotations:
@@ -13,7 +14,7 @@ eck-elasticsearch:
     role: "django" # assigning app nodegroup for POC purposes
   auth:
     fileRealm: # set elastic user's password https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-users-and-roles.html#k8s_file_realm
-    - secretName: elastic-secrets # password set as SSM parameter in tf
+      - secretName: elastic-secrets # password set as SSM parameter in tf
 
 #  indexTemplates: # this would allow you to set 1 replica without yellow status. however enterprise license is required for these settings
 #    composableIndexTemplates:
@@ -27,39 +28,39 @@ eck-elasticsearch:
 #            number_of_replicas: 0
 
   nodeSets:
-  - name: default
-    count: 2 # number of replicas, set to 2 to avoid yellow status. alternatively code an initcontainer with PUT _template/kubernetes_cluster_template with "index_patterns": ["logstash-*"], "number_of_replicas": 0
-    config:
-      node.store.allow_mmap: false # vm.max_map_count via initContainer # vm.max_map_count to 262144 # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
-    podTemplate:
-      spec:
-        nodeSelector:
-          role: "django" # assigning app nodegroup for POC purposes
-        containers:
-          - name: elasticsearch
-            resources:
-              requests:
-                memory: 1Gi # 1Gi
-                cpu: 250m
-              limits:
-                memory: 2.5Gi
-                cpu: 1000m
-            env:
-              - name: READINESS_PROBE_PROTOCOL
-                value: http
-              - name: READINESS_PROBE_TIMEOUT
-                value: "120"
-
-    volumeClaimTemplates:
-      - metadata:
-          name: elasticsearch-data
+    - name: default
+      count: 2 # number of replicas, set to 2 to avoid yellow status. alternatively code an initcontainer with PUT _template/kubernetes_cluster_template with "index_patterns": ["logstash-*"], "number_of_replicas": 0
+      config:
+        node.store.allow_mmap: false # vm.max_map_count via initContainer # vm.max_map_count to 262144 # https://www.elastic.co/guide/en/cloud-on-k8s/current/k8s-virtual-memory.html
+      podTemplate:
         spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 10Gi
-          storageClassName: gp3
+          nodeSelector:
+            role: "django" # assigning app nodegroup for POC purposes
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  memory: 1Gi # 1Gi
+                  cpu: 250m
+                limits:
+                  memory: 2.5Gi
+                  cpu: 1000m
+              env:
+                - name: READINESS_PROBE_PROTOCOL
+                  value: http
+                - name: READINESS_PROBE_TIMEOUT
+                  value: "120"
+
+  volumeClaimTemplates:
+    - metadata:
+        name: elasticsearch-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+        storageClassName: gp3
 
 eck-kibana:
   enabled: true

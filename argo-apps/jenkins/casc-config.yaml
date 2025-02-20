@@ -1,74 +1,75 @@
+---
 jenkins:
   agentProtocols:
-  - "JNLP4-connect"
-  - "Ping"
+    - "JNLP4-connect"
+    - "Ping"
   authorizationStrategy:
     loggedInUsersCanDoAnything:
       allowAnonymousRead: false
   clouds:
-  - kubernetes:
-      containerCap: 10
-      containerCapStr: "10"
-      jenkinsTunnel: "jenkins-agent.jenkins.svc.cluster.local:50000"
-      jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
-      name: "kubernetes"
-      namespace: "jenkins"
-      podLabels:
-      - key: "jenkins/jenkins-jenkins-agent"
-        value: "true"
-      serverUrl: "https://kubernetes.default"
-      templates:
-      - containers:
-        - args: "^^${computer.jnlpmac} ^^${computer.name}"
-          envVars:
-          - envVar:
-              key: "JENKINS_URL"
-              value: "http://jenkins.jenkins.svc.cluster.local:8080/"
-          image: "jenkins/inbound-agent:3206.vb_15dcf73f6a_9-3"
-          livenessProbe:
-            failureThreshold: 0
-            initialDelaySeconds: 0
-            periodSeconds: 0
-            successThreshold: 0
-            timeoutSeconds: 0
-          name: "jnlp"
-          resourceLimitCpu: "512m"
-          resourceLimitMemory: "512Mi"
-          resourceRequestCpu: "512m"
-          resourceRequestMemory: "512Mi"
-          workingDir: "/home/jenkins/agent"
-        id: "0eda76d074bd25cd52a8c435043d2f3dbe3f123cf1ec2c7f5bcdcfe9278c692c"
-        label: "jenkins-jenkins-agent"
-        name: "default"
+    - kubernetes:
+        containerCap: 10
+        containerCapStr: "10"
+        jenkinsTunnel: "jenkins-agent.jenkins.svc.cluster.local:50000"
+        jenkinsUrl: "http://jenkins.jenkins.svc.cluster.local:8080"
+        name: "kubernetes"
         namespace: "jenkins"
-        nodeSelector: "role=ci-cd"
-        nodeUsageMode: NORMAL
-        podRetention: "never"
-        serviceAccount: "default"
-        slaveConnectTimeout: 100
-        slaveConnectTimeoutStr: "100"
-        yamlMergeStrategy: "override"
+        podLabels:
+          - key: "jenkins/jenkins-jenkins-agent"
+            value: "true"
+        serverUrl: "https://kubernetes.default"
+        templates:
+          - containers:
+            - args: "^^${computer.jnlpmac} ^^${computer.name}"
+              envVars:
+                - envVar:
+                    key: "JENKINS_URL"
+                    value: "http://jenkins.jenkins.svc.cluster.local:8080/"
+              image: "jenkins/inbound-agent:3206.vb_15dcf73f6a_9-3"
+              livenessProbe:
+                failureThreshold: 0
+                initialDelaySeconds: 0
+                periodSeconds: 0
+                successThreshold: 0
+                timeoutSeconds: 0
+              name: "jnlp"
+              resourceLimitCpu: "512m"
+              resourceLimitMemory: "512Mi"
+              resourceRequestCpu: "512m"
+              resourceRequestMemory: "512Mi"
+              workingDir: "/home/jenkins/agent"
+            id: "0eda76d074bd25cd52a8c435043d2f3dbe3f123cf1ec2c7f5bcdcfe9278c692c"
+            label: "jenkins-jenkins-agent"
+            name: "default"
+            namespace: "jenkins"
+            nodeSelector: "role=core"
+            nodeUsageMode: NORMAL
+            podRetention: "never"
+            serviceAccount: "default"
+            slaveConnectTimeout: 100
+            slaveConnectTimeoutStr: "100"
+            yamlMergeStrategy: "override"
   crumbIssuer:
     standard:
       excludeClientIPFromCrumb: true
   disableRememberMe: false
   labelAtoms:
-  - name: "built-in"
-  - name: "jenkins-jenkins-agent"
+    - name: "built-in"
+    - name: "jenkins-jenkins-agent"
   markupFormatter: "plainText"
   mode: NORMAL
   myViewsTabBar: "standard"
   nodeMonitors:
-  - "architecture"
-  - "clock"
-  - diskSpace:
-      freeSpaceThreshold: "1GiB"
-      freeSpaceWarningThreshold: "2GiB"
-  - "swapSpace"
-  - tmpSpace:
-      freeSpaceThreshold: "1GiB"
-      freeSpaceWarningThreshold: "2GiB"
-  - "responseTime"
+    - "architecture"
+    - "clock"
+    - diskSpace:
+        freeSpaceThreshold: "1GiB"
+        freeSpaceWarningThreshold: "2GiB"
+    - "swapSpace"
+    - tmpSpace:
+        freeSpaceThreshold: "1GiB"
+        freeSpaceWarningThreshold: "2GiB"
+    - "responseTime"
   numExecutors: 0
   primaryView:
     all:
@@ -83,25 +84,25 @@ jenkins:
       allowsSignup: false
       enableCaptcha: false
       users:
-      - id: "admin"
-        name: "Jenkins Admin"
-        properties:
-        - "apiToken"
-        - "consoleUrlProvider"
-        - "mailer"
-        - "myView"
-        - preferredProvider:
-            providerId: "default"
-        - "timezone"
-        - "experimentalFlags"
+        - id: "admin"
+          name: "Jenkins Admin"
+          properties:
+            - "apiToken"
+            - "consoleUrlProvider"
+            - "mailer"
+            - "myView"
+            - preferredProvider:
+                providerId: "default"
+            - "timezone"
+            - "experimentalFlags"
   slaveAgentPort: 50000
   updateCenter:
     sites:
-    - id: "default"
-      url: "https://updates.jenkins.io/update-center.json"
+      - id: "default"
+        url: "https://updates.jenkins.io/update-center.json"
   views:
-  - all:
-      name: "all"
+    - all:
+        name: "all"
   viewsTabBar: "standard"
 globalCredentialsConfiguration:
   configuration:
@@ -123,7 +124,7 @@ security:
 unclassified:
   buildDiscarders:
     configuredBuildDiscarders:
-    - "jobBuildDiscarder"
+      - "jobBuildDiscarder"
   fingerprints:
     fingerprintCleanupDisabled: false
     storage: "file"
@@ -147,8 +148,8 @@ unclassified:
 tool:
   git:
     installations:
-    - home: "git"
-      name: "Default"
+      - home: "git"
+        name: "Default"
   mavenGlobalConfig:
     globalSettingsProvider: "standard"
     settingsProvider: "standard"

@@ -4,16 +4,13 @@ kind: Kustomization
 namespace: eck-stack
 
 helmCharts:
-  - name: eck-stack
+  - name: eck-operator
     repo: https://helm.elastic.co
-    version: 0.14.1
-    releaseName: eck-stack
+    version: 2.16.1
+    releaseName: eck-operator
     namespace: eck-stack
     includeCRDs: true
     valuesFile: values.yaml
 
 resources:
-  - ingress.yaml
-  - secrets.yaml
   - serviceaccount.yaml
-  - eck-operator/

@@ -1,3 +1,4 @@
+---
 crds:
   keep: false # Delete CRDs on chart uninstall
 
@@ -11,7 +12,7 @@ global:
 #  image:
 #    tag: "v2.11.4"
   nodeSelector:
-    role: ci-cd
+    role: core
 
 configs:
 #  cm: # Needed if not using plugin

@@ -1,17 +1,17 @@
+---
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
-namespace: argocd # required
+namespace: argocd
 
 helmCharts:
   - name: argo-cd
     repo: https://argoproj.github.io/argo-helm
-    version: 7.3.4 # Chart 7.3.4
+    version: 7.8.2
     releaseName: argo-cd
     namespace: argocd
-    includeCRDs: true # check if necessary ( as it should be defined in values.yaml)
     valuesFile: values.yaml
-    valuesMerge: merge # specifies how to treat valuesInline with respect to Values. Legal values: ‘merge’, ‘override’, ‘replace’. Defaults to ‘override’. # check
+    valuesMerge: merge
+    includeCRDs: true
 
 resources:
   - job.yaml

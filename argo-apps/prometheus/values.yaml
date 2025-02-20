@@ -1,15 +1,16 @@
+---
 alertmanager:
   alertmanagerSpec:
     nodeSelector:
-      role: ci-cd
+      role: core
 
 kube-state-metrics:
   nodeSelector:
-    role: ci-cd
+    role: core
 
 prometheus-node-exporter:
   nodeSelector:
-    role: ci-cd
+    role: core
 
 grafana:
   admin:
@@ -17,12 +18,12 @@ grafana:
     userKey: admin-user # key in secrets.yaml, not actual password
     passwordKey: admin-password # key in secrets.yaml, not actual password
   nodeSelector:
-    role: ci-cd
+    role: core
 
 prometheus:
   prometheusSpec:
     nodeSelector:
-      role: ci-cd
+      role: core
 
 prometheusOperator:
   admissionWebhooks:
@@ -30,7 +31,7 @@ prometheusOperator:
     patch:
       ttlSecondsAfterFinished: 120 # prometheus-kube-stack sync fix
   nodeSelector:
-      role: ci-cd
+      role: core
 
 # Control plane is managed by EKS hence the following are disabled
 defaultRules:
@@ -52,4 +53,3 @@ kubelet:
     interval: "30s"
     resource: false # disabled by default because container metrics are already exposed by cAdvisor
     resourcePath: "/metrics/resource"
-

@@ -1,3 +1,4 @@
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -18,11 +19,11 @@ spec:
         directories:
           - path: argo-apps/*
   strategy:
-    type: RollingSync # Sync ArgoCD first (along with envsubst plugin and restart job that makes env available). Afterward, sync the rest of the apps so that env substitution works
+    type: RollingSync
     rollingSync:
-      steps: # These are executed sequentially from top to bottom. Everything that is labeled `syncorder=argocd` first, then everything that is not `argocd` (NotIn operator) at the same time
+      steps:
         - matchExpressions:
-            - key: syncorder # Label defined in appset template:,metadata:,labels: #
+            - key: syncorder
               operator: In
               values:
                 - argocd
@@ -43,7 +44,6 @@ spec:
               operator: In
               values:
                 - eck-stack
-                #- elastic
                 - prometheus
         - matchExpressions:
             - key: syncorder
@@ -92,8 +92,8 @@ spec:
             maxDuration: 5m0s
             factor: 2
         syncOptions:
-        - CreateNamespace=true
-        - ServerSideApply=true
-        - ServerSideDiff=true
-        - RespectIgnoreDifferences=true # (custom diffing) fixes syncing error: .status.lastPhaseTransitionTime: field not declared in schema (related to django PV)
-        #- PruneLast=true # prometheus-kube-stack sync fix
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - ServerSideDiff=true
+          - RespectIgnoreDifferences=true # (custom diffing) fixes syncing error: .status.lastPhaseTransitionTime: field not declared in schema (related to django PV)
+          #- PruneLast=true # prometheus-kube-stack sync fix

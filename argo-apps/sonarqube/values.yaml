@@ -1,3 +1,4 @@
+---
 replicaCount: 1 # value of 0 will not launch any pods
 
 #deploymentStrategy:
@@ -62,16 +63,16 @@ nodeSelector:
 readinessProbe: # bypass probes for testing purposes, allow for argocd to sync
   exec:
     command:
-    - sh
-    - -c
-    - "exit 0"
+      - sh
+      - -c
+      - "exit 0"
 
 livenessProbe: # bypass probes for testing purposes, allow for argocd to sync
   exec:
     command:
-    - sh
-    - -c
-    - "exit 0"
+      - sh
+      - -c
+      - "exit 0"
 
 ## Environment variables to attach to the pods
 ##

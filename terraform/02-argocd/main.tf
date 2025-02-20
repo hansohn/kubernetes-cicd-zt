@@ -74,7 +74,7 @@ resource "helm_release" "argo_cd" {
   #wait = false # might be needed!
 
   create_namespace = true
-  values = [file("${path.module}/../../argo-apps/argocd/values.yaml")]
+  values           = [file("${path.module}/../../argo-apps/argocd/values.yaml")]
 
   set {                                                                            # used for ArgoCD Repo Server secrets. contains values that envsubst plugin uses (kustomize cannot load external env fed from tf by design, argocd cmp is a workaround)
     name  = "repoServer.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn" # annotation to allows service account to assume aws role
@@ -86,8 +86,8 @@ resource "helm_release" "argo_cd" {
   # kubectl patch applicationset cluster-addons -n argocd --type=json -p='[{"op": "replace", "path": "/spec/generators/0/git/directories/0/path", "value": "argo-apps/argocd"}]'
 
   provisioner "local-exec" {
-    when = destroy
-        command = <<-EOT
+    when    = destroy
+    command = <<-EOT
           kubectl get crd -o name |
           grep -E 'argoproj.io|monitoring.coreos.com|fluent.io|elastic.co' |
           xargs -I {} kubectl patch {} -p '{"metadata":{"finalizers":[]}}' --type=merge &&

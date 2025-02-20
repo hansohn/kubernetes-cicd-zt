@@ -1,3 +1,4 @@
+---
 # Django service (gunicorn)
 apiVersion: v1
 kind: Service

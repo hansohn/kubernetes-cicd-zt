@@ -1,16 +1,15 @@
-# local helm v3.14.4
-# local kubectl v1.29.3
-# aws kubernetes v1.29
+data "aws_availability_zones" "available" {}
+data "aws_caller_identity" "current" {}
+data "aws_region" "current" {}
 
 locals {
-  name     = "django-${var.TF_ENVIRONMENT}" # cluster name
-  region   = var.TF_REGION
+  name     = "demo-${var.TF_ENVIRONMENT}" # cluster name
   domain   = var.TF_DOMAIN
   repo_url = var.TF_REPO_URL
 
-  cluster_version = "1.29"        # 1.29
-  vpc_cidr        = "10.0.0.0/16" # ~65k IPs
-  azs             = slice(data.aws_availability_zones.available.names, 0, 3)
+  aws_account_id = data.aws_caller_identity.current.account_id
+  aws_region     = data.aws_region.current.name
+  azs            = slice(data.aws_availability_zones.available.names, 0, 3)
 
   rds_user   = "django"   # django rds
   rds_dbname = "postgres" # django rds
@@ -22,248 +21,211 @@ locals {
 
   # SSM Parameter values
   parameters = {
-
-    "sonar_rds_user" = {
-      value = local.sonar_rds_user
+    # aws
+    "aws_account_id" = {
+      name  = "aws/account_id"
+      value = local.aws_account_id
     }
-    "sonar_rds_dbname" = {
-      value = local.sonar_rds_dbname
-    }
-    "sonar_rds_port" = {
-      value = local.sonar_rds_port
-    }
-    "sonar_rds_password" = {
-      value = random_password.sonarqube_database_password.result
-    }
-    "sonar_rds_endpoint" = {
-      value = "jdbc:postgresql://${module.db_sonarqube.db_instance_endpoint}/${local.sonar_rds_dbname}" # `SONARQUBE_JDBC_URL` requires baked in interpolation # jdbc:postgresql://[host]:[port]/[database]
-    }
-    "sonar_token" = {
-      value = random_password.sonarqube_token.result
-    }
-    "sonar_admin_password" = {
-      value = random_password.sonarqube_admin_password.result
-    }
-    "sonar_admin_password_current" = {
-      value = random_password.sonarqube_admin_password.result
+    "aws_region" = {
+      name  = "aws/region"
+      value = local.aws_region
     }
 
-    # e.g. hansohn.io (used by ExternalDNS) (and argocd)
-    "domain" = {
+    # cluster
+    "cluster_name" = {
+      name  = "cluster/name"
+      value = local.name
+    }
+    "cluster_domain" = {
+      name  = "cluster/domain"
       value = local.domain
     }
 
-    "elastic_api_password" = {
-      value = random_password.elastic_password.result
-    }
-
-    "elastic_api_username" = {
-      value = "elastic" # pending move to argo-apps/elastic/secrets.yaml as "merge" in ExternalSecret
-    }
-
-    "elastic_api_roles" = {
-      value = "superuser" # pending move to argo-apps/elastic/secrets.yaml as "merge" in ExternalSecret
-    }
-
-    "django_debug" = {
-      value = "FALSE"
-    }
-
-    "region" = {
-      value = local.region
-    }
-
-    "account" = {
-      value = data.aws_caller_identity.current.account_id
-    }
-
-    "cluster_name" = {
-      value = local.name
-    }
-
-    # (used by Jenkins/Kaniko)
-    "ecr_repo" = {
-      value = module.ecr.repository_url
-    }
-
-    "ecr_repo_name" = {
-      value = local.name # right now the name of the cluster is being used for the app name # pending
-    }
-
-    "ecr_region" = {
-      value = local.region
-    }
-
-    "repo_url" = {
-      value = local.repo_url # right now the name of the cluster is being used for the app name # pending
-    }
-
-    "grafana_admin_user" = {
-      value = "admin"
-    }
-
-    "grafana_admin_password" = {
-      value = random_password.grafana_password.result
-    }
-
-    "jenkins_admin_user" = {
-      value = "admin"
-    }
-
-    "jenkins_admin_password" = {
-      value = random_password.jenkins_password.result
-    }
-
-    "jenkins_github_app_user" = {
-      value = var.ARGOCD_GITHUB_USER # not yet setup since repo is public
-    }
-
-    "jenkins_github_app_token" = {
-      value = var.ARGOCD_GITHUB_TOKEN # not yet setup since repo is public
-    }
-
-    # Django's params
-    "rds_user" = {
-      value = local.rds_user
-    }
-
-    "rds_dbname" = {
-      value = local.rds_dbname
-    }
-
-    "rds_password" = {                                 # pending # make type secret after test
-      value = random_password.database_password.result # pending. figure out how not to include in tf state
-    }
-
-    "rds_port" = {
-      value = local.rds_port
-    }
-
-    "rds_endpoint" = {
-      value = split(":", module.db.db_instance_endpoint)[0] # regular output includes `endpoint:port`, this filters out the port
-    }
-
-    "django_secretkey" = {
-      value = random_password.django_secretkey.result
-    }
-
-    #ArgoCD Image Updater Github App Secret
-
-    "argo_cd_github_app_user" = { # check
-      value = var.ARGOCD_GITHUB_USER
-    }
-
-    "argo_cd_github_app_token" = { # check
-      value = var.ARGOCD_GITHUB_TOKEN
-    }
-
-    #ArgoCD admin password
-
-    "argo_cd_admin_password" = { # check
+    # argocd
+    "argo_cd_admin_password" = {
+      name  = "argo/cd/admin/password"
       value = random_password.argocd_password.result
     }
-
-    ###################################################################################
-
-    # Global variables of envsubst
-
-    "argo_cd_aws_account_number" = { # check
-      value = data.aws_caller_identity.current.account_id
-    }
-
-    "argo_cd_aws_cluster_name" = { # check
-      value = local.name
-    }
-
-    "argo_cd_aws_ecr_repo" = {                         # check
+    "argo_cd_ecr_domain" = {
+      name  = "argo/cd/ecr/domain"
       value = split("/", module.ecr.repository_url)[0] # retains only the ecr domain <ecr domain>/<repo name>
     }
-
-    "argo_cd_aws_ecr_repo_name" = { # check
+    "argo_cd_ecr_repo_name" = {
+      name  = "argo/cd/ecr/repo_name"
       value = module.ecr.repository_name
     }
-
-    "argo_cd_aws_region" = { # check
-      value = local.region
+    "argo_cd_iam_repo_role_arn" = {
+      name  = "argo/cd/iam/repo_role_arn"
+      value = aws_iam_role.argocd_repo.arn
     }
-
-    "argo_cd_aws_domain" = { # check
-      value = local.domain
-    }
-
-    ##################################################################################
-
-    # ServiceAccounts ARN
-    "argo_cd_iam_role_arn" = {
+    "argo_cd_iam_updater_role_arn" = {
+      name  = "argo/cd/iam/updater_role_arn"
       value = aws_iam_role.argocd_image_updater.arn
     }
 
-    "argo_cd_repo_iam_role_arn" = {
-      value = aws_iam_role.argocd_repo.arn
+    # argocd image updater
+    "argo_cd_image_updater_github_user" = {
+      name  = "argo/cd/image_updater/github/user"
+      value = var.ARGOCD_GITHUB_USER
+    }
+    "argo_cd_image_updater_github_token" = {
+      name  = "argo/cd/image_updater/github/token"
+      value = var.ARGOCD_GITHUB_TOKEN
     }
 
-    "jenkins_iam_role_arn" = {
-      value = aws_iam_role.jenkins.arn
+    # django
+    "app_iam_role_arn" = {
+      name  = "app/iam/role_arn"
+      value = aws_iam_role.django.arn
+    }
+    "app_django_debug" = {
+      name  = "app/django/debug"
+      value = "FALSE"
+    }
+    "app_django_secret_key" = {
+      name  = "app/django/secret_key"
+      value = random_password.django_secretkey.result
+    }
+    "app_db_name" = {
+      name  = "app/db/name"
+      value = local.rds_dbname
+    }
+    "app_db_host" = {
+      name  = "app/db/host"
+      value = split(":", module.db.db_instance_endpoint)[0] # regular output includes `endpoint:port`, this filters out the port
+    }
+    "app_db_port" = {
+      name  = "app/db/port"
+      value = local.rds_port
+    }
+    "app_db_username" = {
+      name  = "app/db/username"
+      value = local.rds_user
+    }
+    "app_db_password" = { # pending # make type secret after test
+      name  = "app/db/password"
+      value = random_password.database_password.result # pending. figure out how not to include in tf state
+    }
+    "app_repo_url" = {
+      name  = "app/repo_url"
+      value = local.repo_url # right now the name of the cluster is being used for the app name # pending
     }
 
-    "prometheus_iam_role_arn" = {
-      value = aws_iam_role.prometheus.arn
+    # ecr
+    # (used by Jenkins/Kaniko)
+    "ecr_region" = {
+      name  = "ecr/region"
+      value = local.aws_region
+    }
+    "ecr_repo_domain" = {
+      name  = "ecr/repo_domain"
+      value = split("/", module.ecr.repository_url)[0] # retains only the ecr domain <ecr domain>/<repo name>
+    }
+    "ecr_repo_name" = {
+      name  = "ecr/repo_name"
+      value = module.ecr.repository_name
+    }
+    "ecr_repo_url" = {
+      name  = "ecr/repo_url"
+      value = module.ecr.repository_url
     }
 
+    # elastic
+    "elastic_api_roles" = {
+      name  = "elastic/superuser"
+      value = "superuser" # pending move to argo-apps/elastic/secrets.yaml as "merge" in ExternalSecret
+    }
+    "elastic_api_password" = {
+      name  = "elastic/api/password"
+      value = random_password.elastic_password.result
+    }
+    "elastic_api_username" = {
+      name  = "elastic/api/username"
+      value = "elastic" # pending move to argo-apps/elastic/secrets.yaml as "merge" in ExternalSecret
+    }
+
+    # external-secrets
     "external_secrets_iam_role_arn" = {
+      name  = "externam_secrets/iam/role_arn"
       value = aws_iam_role.external_secrets.arn
     }
 
-    "django_iam_role_arn" = {
-      value = aws_iam_role.django.arn
+    # grafana
+    "grafana_admin_user" = {
+      name  = "grafana/admin/username"
+      value = "admin"
+    }
+    "grafana_admin_password" = {
+      name  = "grafana/admin/password"
+      value = random_password.grafana_password.result
     }
 
+    # jenkins
+    "jenkins_admin_username" = {
+      name  = "jenkins/admin/username"
+      value = "admin"
+    }
+    "jenkins_admin_password" = {
+      name  = "jenkins/admin/password"
+      value = random_password.jenkins_password.result
+    }
+    "jenkins_github_username" = {
+      name  = "jenkins/github/username"
+      value = var.ARGOCD_GITHUB_USER # not yet setup since repo is public
+    }
+    "jenkins_github_token" = {
+      name  = "jenkins/github/token"
+      value = var.ARGOCD_GITHUB_TOKEN # not yet setup since repo is public
+    }
+    "jenkins_iam_role_arn" = {
+      name  = "jenkins/iam/role_arn"
+      value = aws_iam_role.jenkins.arn
+    }
 
+    # prometheus
+    "prometheus_iam_role_arn" = {
+      name  = "prometheus/iam/role_arn"
+      value = aws_iam_role.prometheus.arn
+    }
+
+    # sonarquebe
+    "sonar_admin_password" = {
+      name  = "sonar/admin/password"
+      value = random_password.sonarqube_admin_password.result
+    }
+    "sonar_admin_password_current" = {
+      name  = "sonar/admin/password_current"
+      value = random_password.sonarqube_admin_password.result
+    }
+    "sonar_db_name" = {
+      name  = "sonar/db/name"
+      value = local.sonar_rds_dbname
+    }
+    "sonar_db_host" = {
+      name  = "sonar/db/host"
+      value = "jdbc:postgresql://${module.db_sonarqube.db_instance_endpoint}/${local.sonar_rds_dbname}" # `SONARQUBE_JDBC_URL` requires baked in interpolation # jdbc:postgresql://[host]:[port]/[database]
+    }
+    "sonar_db_port" = {
+      name  = "sonar/db/port"
+      value = local.sonar_rds_port
+    }
+    "sonar_db_user" = {
+      name  = "sonar/db/username"
+      value = local.sonar_rds_user
+    }
+    "sonar_db__password" = {
+      name  = "sonar/db/password"
+      value = random_password.sonarqube_database_password.result
+    }
+    "sonar_db_token" = {
+      name  = "sonar/db/token"
+      value = random_password.sonarqube_token.result
+    }
   }
+
   tags = {
     Example = local.name
   }
-}
-
-## Import non-sensitive environment variables as TF variable
-variable "TF_ENVIRONMENT" {
-  description = "Environment"
-  type        = string
-}
-variable "TF_DOMAIN" {
-  description = "Cluster domain name"
-  type        = string
-}
-variable "TF_REPO_URL" {
-  description = "Cluster repo"
-  type        = string
-}
-variable "TF_REGION" {
-  description = "Cluster region"
-  type        = string
-}
-
-## ArgoCD ImageUpdater Github App Token
-## must be set before tf apply
-# export TF_VAR_ARGOCD_GITHUB_TOKEN=123example
-# or have tfvars present
-
-## Import environment variables as TF variable
-variable "ARGOCD_GITHUB_TOKEN" {
-  description = "ArgoCD Image Updater Github Personal Token"
-  type        = string
-  sensitive   = true
-}
-
-variable "ARGOCD_GITHUB_USER" {
-  description = "ArgoCD Image Updater Github username"
-  type        = string
-  sensitive   = true
-}
-
-output "domain" {
-  value       = local.domain
-  description = "The name of domain"
 }
 
 ###############################################################################
@@ -271,46 +233,41 @@ output "domain" {
 ###############################################################################
 
 provider "aws" {
-  region = local.region
+  region = var.aws_region
 }
 
-# kubectl can wait till eks is ready, and then apply yaml
 provider "kubectl" {
   host                   = module.eks.cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   load_config_file       = false
   exec {
-    api_version = "client.authentication.k8s.io/v1beta1" # /v1alpha1"
+    api_version = "client.authentication.k8s.io/v1beta1"
     args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
     command     = "aws"
   }
 }
 
-# kubernetes provider cannot wait until eks is provisioned before applying yaml
 provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint                                 # var.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data) # var.cluster_ca_cert
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
   exec {
-    api_version = "client.authentication.k8s.io/v1beta1"                          # /v1alpha1"
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name] # var.cluster_name
+    api_version = "client.authentication.k8s.io/v1beta1"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
     command     = "aws"
   }
 }
 
 provider "helm" {
   kubernetes {
-    host                   = module.eks.cluster_endpoint                                 # var.cluster_endpoint
-    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data) # var.cluster_ca_cert
+    host                   = module.eks.cluster_endpoint
+    cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
     exec {
-      api_version = "client.authentication.k8s.io/v1beta1" # /v1alpha1"
+      api_version = "client.authentication.k8s.io/v1beta1"
       args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
       command     = "aws"
     }
   }
 }
-
-data "aws_caller_identity" "current" {}
-data "aws_availability_zones" "available" {}
 
 
 ###############################################################################
@@ -321,23 +278,20 @@ data "aws_availability_zones" "available" {}
 
 module "ssm-parameter" {
   source  = "terraform-aws-modules/ssm-parameter/aws"
-  version = "1.1.1"
+  version = "1.1.2"
 
   for_each = local.parameters
 
-  # IDE may show unresolved reference name, it's normal (commenting unused values breaks the module)
-  name            = try(each.value.name, each.key)
-  value           = try(each.value.value, null)
-  values          = try(each.value.values, [])
-  type            = try(each.value.type, null)
-  secure_type     = try(each.value.secure_type, null)
-  description     = try(each.value.description, null)
-  tier            = try(each.value.tier, null)
-  key_id          = try(each.value.key_id, null)
-  allowed_pattern = try(each.value.allowed_pattern, null)
-  data_type       = try(each.value.data_type, null)
-
-  # use module wrapper for multiple environments dev/qa/prod etc.
+  name            = lookup(each.value, "name", each.value.key)
+  value           = lookup(each.value, "value", null)
+  values          = lookup(each.value, "values", [])
+  type            = lookup(each.value, "type", null)
+  secure_type     = lookup(each.value, "secure_type", null)
+  description     = lookup(each.value, "description", null)
+  tier            = lookup(each.value, "tier", null)
+  key_id          = lookup(each.value, "key_id", null)
+  allowed_pattern = lookup(each.value, "allowed_pattern", null)
+  data_type       = lookup(each.value, "data_type", null)
 
   depends_on = [
     module.eks,
@@ -350,10 +304,10 @@ module "ssm-parameter" {
 
 module "eks" {
   source  = "terraform-aws-modules/eks/aws"
-  version = "20.20.0" # 20.11.1 # 20.17.2 #
+  version = "20.33.1"
 
   cluster_name             = local.name
-  cluster_version          = local.cluster_version
+  cluster_version          = var.cluster_version
   cluster_ip_family        = "ipv4"
   iam_role_use_name_prefix = true
   vpc_id                   = module.vpc.vpc_id
@@ -379,7 +333,7 @@ module "eks" {
       addon_version               = "v1.11.1-eksbuild.9"
       configuration_values = jsonencode({
         nodeSelector = {
-          "role" = "ci-cd"
+          "role" = "core"
         }
       })
     }
@@ -439,7 +393,7 @@ module "eks" {
       type                       = "ingress"
       source_node_security_group = true
     }
-    egress_nodes_ephemeral_ports_tcp = { # Check
+    egress_nodes_ephemeral_ports_tcp = {
       description                = "To node 1025-65535"
       protocol                   = "tcp"
       from_port                  = 1025
@@ -452,7 +406,7 @@ module "eks" {
   # Enable node to node communication
   node_security_group_additional_rules = {
     ingress_self_all = {
-      description = "Node to node all ports/protocols" # Check
+      description = "Node to node all ports/protocols"
       protocol    = "-1"
       from_port   = 0
       to_port     = 0
@@ -480,29 +434,28 @@ module "eks" {
 
   eks_managed_node_groups = {
 
-    ci-cd = { # green #
-      name       = "ci-cd-node-group"
+    # core infra - cicd
+    core = {
+      name        = "core-node-group"
+      description = "Core managed node group launch template"
+
       subnet_ids = module.vpc.private_subnets
-      ami_type   = "AL2_x86_64" # AL2_ARM_64 for arm
 
       min_size     = 1
       max_size     = 2
       desired_size = 1
 
-      capacity_type = "SPOT" # "ON_DEMAND" # SPOT instances nodes are created in random AZs without balance
+      ami_type       = "AL2_x86_64"
+      instance_types = ["t3.large"]
+      capacity_type  = "SPOT"
 
       labels = {
-        role = "ci-cd" # used by k8s/argocd. node selection, scheduling, grouping, policy enforcement
+        role = "core"
       }
-
-      #force_update_version = true
-      instance_types = ["t3.large"] # Overrides default instance defined above
-
-      description = "CI-CD managed node group launch template"
 
       ebs_optimized           = true
       disable_api_termination = false
-      enable_monitoring       = false # Check # cloudwatch
+      enable_monitoring       = false
 
       block_device_mappings = {
         xvda = {
@@ -510,9 +463,7 @@ module "eks" {
           ebs = {
             volume_size = 30
             volume_type = "gp3"
-            #iops                  = 3000 # Pending. this is for provisioned IOPS, disabled for testing
-            #throughput            = 150 # Pending. this is for provisioned IOPS, disabled for testing
-            encrypted = false # Check
+            encrypted   = false
             #kms_key_id            = module.ebs_kms_key.key_arn
             delete_on_termination = true
           }
@@ -527,16 +478,15 @@ module "eks" {
       }
 
       create_iam_role          = true
-      iam_role_name            = "ci-cd-managed-node-group-role"
+      iam_role_name            = "core-managed-node-group-role"
       iam_role_use_name_prefix = false
-      iam_role_description     = "ci-cd Managed node group role"
+      iam_role_description     = "core Managed node group role"
       iam_role_tags = {
-        Purpose = "ci-cd-managed-node-group-role-tag"
+        Purpose = "core-managed-node-group-role-tag"
       }
       iam_role_additional_policies = {
-        # node wide policies
         AmazonEC2ContainerRegistryReadOnly = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
-        AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore" # Enable SSM
+        AmazonSSMManagedInstanceCore       = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       }
 
       launch_template_tags = {
@@ -546,36 +496,33 @@ module "eks" {
       }
 
       tags = {
-        ExtraTag = "ci-cd-node" # used for cost allocation, resource mgmt, automation
+        ExtraTag = "core-node"
       }
     }
 
-    ###################################################################################################
-
+    # app - django
     django = {
+      name        = "django-node-group"
+      description = "Django managed node group launch template"
 
-      name       = "django-node-group"
       subnet_ids = module.vpc.private_subnets
-      ami_type   = "AL2_x86_64" # AL2_ARM_64 for arm
 
       min_size     = 1
       max_size     = 3
       desired_size = 1
 
-      capacity_type = "SPOT"
+      ami_type       = "AL2_x86_64" # AL2_ARM_64 for arm
+      instance_types = ["t3.large"] # Overrides default instance defined above
+      capacity_type  = "SPOT"
 
       labels = {
         role = "django" # used by k8s/argocd. node selection, scheduling, grouping, policy enforcement
       }
 
-      instance_types = ["t3.large"] # Overrides default instance defined above
-
-      description = "Django managed node group launch template"
-
       ebs_optimized           = true
       disable_api_termination = false
-      enable_monitoring       = false # Check cloudwatch
-      #cloudwatch_log_group_class = "INFREQUENT_ACCESS" # Check cloudwatch
+      enable_monitoring       = false
+      #cloudwatch_log_group_class = "INFREQUENT_ACCESS"
 
       block_device_mappings = {
         xvdb = {
@@ -622,46 +569,44 @@ module "eks" {
     }
   }
 
-  # check
   access_entries = {
-
-    sonarqube = {
-      principal_arn     = aws_iam_role.sonarqube.arn # aws_iam_role.fluent_operator.arn
+    argocdrepo = {
+      principal_arn     = aws_iam_role.argocd_repo.arn
       kubernetes_groups = []
 
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
     }
 
-    fluent-operator = {
-      principal_arn     = aws_iam_role.fluent_operator.arn # aws_iam_role.fluent_operator.arn
+    # cert-manager = {
+    #   principal_arn     = aws_iam_role.cert_manager.arn
+    #   kubernetes_groups = []
+    # 
+    #   policy_associations = {
+    #     admin_policy = {
+    #       policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    #       access_scope = {
+    #         type = "cluster"
+    #       }
+    #     }
+    #   }
+    # }
+
+    django = {
+      principal_arn     = aws_iam_role.django.arn
       kubernetes_groups = []
 
       policy_associations = {
-        admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+        admin = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
-          }
-        }
-      }
-    }
-
-    fluent-operator2 = {                                    # change for fluent-bit
-      principal_arn     = aws_iam_role.fluent_operator2.arn # aws_iam_role.fluent_operator.arn
-      kubernetes_groups = []
-
-      policy_associations = {
-        admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
-          access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
@@ -673,9 +618,9 @@ module "eks" {
 
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
@@ -687,9 +632,9 @@ module "eks" {
 
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
@@ -701,27 +646,13 @@ module "eks" {
 
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
     }
-    #
-    #    cert-manager = {
-    #      principal_arn     = aws_iam_role.cert_manager.arn
-    #      kubernetes_groups = []
-    #
-    #      policy_associations = {
-    #        admin_policy = {
-    #          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
-    #          access_scope = {
-    #            type = "cluster" # check
-    #          }
-    #        }
-    #      }
-    #    }
 
     external-secrets = {
       principal_arn     = aws_iam_role.external_secrets.arn
@@ -729,24 +660,9 @@ module "eks" {
 
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
-          }
-        }
-      }
-    }
-
-
-    argocdrepo = {
-      principal_arn     = aws_iam_role.argocd_repo.arn
-      kubernetes_groups = []
-
-      policy_associations = {
-        admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
-          access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
@@ -758,9 +674,37 @@ module "eks" {
 
       policy_associations = {
         admin_policy = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
+          }
+        }
+      }
+    }
+
+    fluent-operator = {
+      principal_arn     = aws_iam_role.fluent_operator.arn # aws_iam_role.fluent_operator.arn
+      kubernetes_groups = []
+
+      policy_associations = {
+        admin_policy = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+
+    fluent-operator2 = {                                    # change for fluent-bit
+      principal_arn     = aws_iam_role.fluent_operator2.arn # aws_iam_role.fluent_operator.arn
+      kubernetes_groups = []
+
+      policy_associations = {
+        admin_policy = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+          access_scope = {
+            type = "cluster"
           }
         }
       }
@@ -772,9 +716,9 @@ module "eks" {
 
       policy_associations = {
         admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
@@ -786,31 +730,30 @@ module "eks" {
 
       policy_associations = {
         admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
     }
 
-    django = {
-      principal_arn     = aws_iam_role.django.arn
+    sonarqube = {
+      principal_arn     = aws_iam_role.sonarqube.arn # aws_iam_role.fluent_operator.arn
       kubernetes_groups = []
 
       policy_associations = {
-        admin = {
-          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy" # check
+        admin_policy = {
+          policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
           access_scope = {
-            type = "cluster" # check
+            type = "cluster"
           }
         }
       }
     }
-
-
   }
 }
+
 ## automation
 #resource "aws_iam_role" "this" {
 #  for_each = toset(["argocd", "jenkins", "alertmanager", "kubestatemetrics", "nodexporter", "grafana", "prometheus", "prometheusoperator"])
@@ -838,369 +781,356 @@ module "eks" {
 # STS - ServiceAccount/IRSA
 ###############################################################################
 
-resource "aws_iam_role" "sonarqube" {
-  name = "SonarqubeRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:sonarqube:sonarqube" # "namespace:service-account-name"
-          }
-        }
-      },
+data "aws_iam_policy_document" "eks_assume_role_policy" {
+  statement {
+    sid    = "EKSAssumeRole"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRole"
     ]
-  })
-}
-
-
-# fluent
-resource "aws_iam_role" "fluent_operator" {
-  name = "FluentRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:fluent:fluent-operator" # "namespace:service-account-name"
-          }
-        }
-      },
-    ]
-  })
-}
-
-resource "aws_iam_role" "fluent_operator2" {
-  name = "FluentRole2"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:fluent:fluent-bit" # "namespace:service-account-name"
-          }
-        }
-      },
-    ]
-  })
-}
-
-# elastic
-
-resource "aws_iam_role" "elastic_operator" {
-  name = "ElasticRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:eck-stack:eck-pass" # eck-stack:eck-pass" # "namespace:service-account-name"
-          }
-        }
-      },
-    ]
-  })
-}
-
-
-resource "aws_iam_role" "elastic_operator2" {
-  name = "ElasticRole2"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:eck-stack:elastic-operator" # eck-stack:elastic-operator # elastic:elastic-operator # "namespace:service-account-name"
-          }
-        }
-      },
-    ]
-  })
+    principals {
+      type = "Service"
+      identifiers = [
+        "eks.amazonaws.com"
+      ]
+    }
+  }
 }
 
 # argocd
+data "aws_iam_policy_document" "argocd_repo_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "ArgoCDRepoAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:argocd:argo-cd-argocd-repo-server" # "namespace:service-account-name"
+      ]
+    }
+  }
+}
 
 resource "aws_iam_role" "argocd_repo" {
-  name = "ArgoCDrepoRole"
+  name               = "ArgoCDrepoRole"
+  assume_role_policy = data.aws_iam_policy_document.argocd_repo_assume_role_policy.json
+}
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:argocd:argo-cd-argocd-repo-server" # "namespace:service-account-name"
-          }
-        }
-      },
+# argocd image updater
+data "aws_iam_policy_document" "argocd_image_updater_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "ArgoCDImageUpdaterAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
     ]
-  })
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:argocd:argocd-image-updater" # "namespace:service-account-name"
+      ]
+    }
+  }
 }
 
 resource "aws_iam_role" "argocd_image_updater" {
-  name = "ImageUpdaterRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:argocd:argocd-image-updater" #"namespace:service-account-name"
-          }
-        }
-      },
-    ]
-  })
-}
-
-# jenkins
-
-resource "aws_iam_role" "jenkins" {
-  name = "JenkinsRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:jenkins:jenkins" #"namespace:service-account-name"
-          }
-        }
-      },
-    ]
-  })
+  name               = "ImageUpdaterRole"
+  assume_role_policy = data.aws_iam_policy_document.argocd_image_updater_assume_role_policy.json
 }
 
 # django
+data "aws_iam_policy_document" "django_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
 
-resource "aws_iam_role" "django" {
-  name = "DjangoRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:django:django" #"namespace:service-account-name"
-          }
-        }
-      },
+  statement {
+    sid    = "DjangoAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
     ]
-  })
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:django:django" # "namespace:service-account-name"
+      ]
+    }
+  }
 }
 
-# prometheus
+resource "aws_iam_role" "django" {
+  name               = "DjangoRole"
+  assume_role_policy = data.aws_iam_policy_document.django_assume_role_policy.json
+}
 
-resource "aws_iam_role" "prometheus" {
-  name = "PrometheusRole"
+# elastic - eck-pass
+data "aws_iam_policy_document" "elastic_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRole",
-        Principal = {
-          Service = "eks.amazonaws.com"
-        },
-      },
-      # External Secrets Operator reqs (jwt auth)
-      {
-        Effect = "Allow",
-        Action = "sts:AssumeRoleWithWebIdentity",
-        Principal = {
-          Federated = module.eks.oidc_provider_arn
-        },
-        Condition = {
-          StringEquals = {
-            "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub" : "system:serviceaccount:prometheus:kube-prometheus-stack-grafana" #"namespace:service-account-name"
-          }
-        }
-      },
+  statement {
+    sid    = "ECKPassAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
     ]
-  })
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:eck-stack:eck-pass" # "namespace:service-account-name"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "elastic_operator" {
+  name               = "ElasticRole"
+  assume_role_policy = data.aws_iam_policy_document.elastic_assume_role_policy.json
+}
+
+# elastic = elastic-operator
+data "aws_iam_policy_document" "elastic2_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "ECKOperatorAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:eck-stack:eck-operator" # "namespace:service-account-name"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "elastic_operator2" {
+  name               = "ElasticRole2"
+  assume_role_policy = data.aws_iam_policy_document.elastic2_assume_role_policy.json
 }
 
 # external secrets
+resource "aws_iam_role" "external_secrets" {
+  name               = "PrometheusRole"
+  assume_role_policy = data.aws_iam_policy_document.eks_assume_role_policy.json
+}
 
-resource "aws_iam_role" "external_secrets" { # check
-  name = "ExternalSecretsRole"
+# fluent-operator
+data "aws_iam_policy_document" "fluent_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
 
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Principal = {
-          Service = "eks.amazonaws.com"
-        }
-        Effect = "Allow"
-        Sid    = ""
-      }
+  statement {
+    sid    = "SonarqubeAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
     ]
-  })
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:fluent:fluent-operator" # "namespace:service-account-name"
+      ]
+    }
+  }
 }
 
-output "argo_cd_imageupdater_iam_role_arn" {
-  value = aws_iam_role.argocd_image_updater.arn
+resource "aws_iam_role" "fluent_operator" {
+  name               = "FluentRole"
+  assume_role_policy = data.aws_iam_policy_document.fluent_assume_role_policy.json
 }
 
-output "argo_cd_aws_domain" {
-  value = local.domain
+# fluent-bit
+data "aws_iam_policy_document" "fluentbit_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "SonarqubeAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:fluent:fluent-bit" # "namespace:service-account-name"
+      ]
+    }
+  }
 }
 
-output "ecr_repo_url" {
-  value = split("/", module.ecr.repository_url)[0]
+resource "aws_iam_role" "fluent_operator2" {
+  name               = "FluentRole2"
+  assume_role_policy = data.aws_iam_policy_document.fluentbit_assume_role_policy.json
 }
 
-output "argo_cd_repo_iam_role_arn" {
-  value = aws_iam_role.argocd_repo.arn
+# jenkins
+data "aws_iam_policy_document" "jenkins_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "JenkinsAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:jenkins:jenkins" # "namespace:service-account-name"
+      ]
+    }
+  }
 }
 
-output "jenkins_iam_role_arn" {
-  value = aws_iam_role.jenkins.arn
+resource "aws_iam_role" "jenkins" {
+  name               = "JenkinsRole"
+  assume_role_policy = data.aws_iam_policy_document.jenkins_assume_role_policy.json
 }
 
-output "prometheus_iam_role_arn" {
-  value = aws_iam_role.prometheus.arn
+# prometheus
+data "aws_iam_policy_document" "prometheus_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "PrometheusAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:prometheus:kube-prometheus-stack-grafana" # "namespace:service-account-name"
+      ]
+    }
+  }
 }
 
-output "external_secrets_iam_role_arn" {
-  value = aws_iam_role.external_secrets.arn
+resource "aws_iam_role" "prometheus" {
+  name               = "PrometheusRole"
+  assume_role_policy = data.aws_iam_policy_document.prometheus_assume_role_policy.json
 }
 
-output "django_iam_role_arn" {
-  value = aws_iam_role.django.arn
+# sonarqube
+data "aws_iam_policy_document" "sonarqube_assume_role_policy" {
+  source_policy_documents = [
+    data.aws_iam_policy_document.eks_assume_role_policy.json
+  ]
+
+  statement {
+    sid    = "SonarqubeAssumeRoleWithWebIdentity"
+    effect = "Allow"
+    actions = [
+      "sts:AssumeRoleWithWebIdentity"
+    ]
+    principals {
+      type = "Federated"
+      identifiers = [
+        module.eks.oidc_provider_arn
+      ]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
+      values = [
+        "system:serviceaccount:sonarqube:sonarqube" # "namespace:service-account-name"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "sonarqube" {
+  name               = "SonarqubeRole"
+  assume_role_policy = data.aws_iam_policy_document.sonarqube_assume_role_policy.json
 }
 
 ################################################################################
@@ -1209,17 +1139,17 @@ output "django_iam_role_arn" {
 
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "5.9.0"
+  version = "5.19.0"
 
   name = local.name
-  cidr = local.vpc_cidr
+  cidr = var.vpc_cidr
 
   azs              = local.azs
-  private_subnets  = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 4, k)]      # ~4k IPs
-  public_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 48)] # ~256 IPs
-  database_subnets = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 52)] # ~256 IPs
+  private_subnets  = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 4, k)]      # ~4k IPs
+  public_subnets   = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 48)] # ~256 IPs
+  database_subnets = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 52)] # ~256 IPs
 
-  #intra_subnets   = [for k, v in local.azs : cidrsubnet(local.vpc_cidr, 8, k + 52)] # used for control_plane_subnet_ids cluster (?)
+  #intra_subnets   = [for k, v in local.azs : cidrsubnet(var.vpc_cidr, 8, k + 52)] # used for control_plane_subnet_ids cluster (?)
 
   create_database_subnet_group = true
 
@@ -1243,18 +1173,18 @@ module "vpc" {
 
 module "ebs_kms_key" {
   source  = "terraform-aws-modules/kms/aws"
-  version = "3.1.0"
+  version = "3.1.1"
 
   description = "Customer managed key to encrypt EKS managed node group volumes"
 
   # Policy
   key_administrators = [
-    data.aws_caller_identity.current.arn # Check
+    data.aws_caller_identity.current.arn
   ]
 
   key_service_roles_for_autoscaling = [
     # required for the ASG to manage encrypted volumes for nodes
-    "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling", # Check
+    "arn:aws:iam::${local.aws_account_id}:role/aws-service-role/autoscaling.amazonaws.com/AWSServiceRoleForAutoScaling",
     # required for the cluster / persistentvolume-controller to create encrypted PVCs
     module.eks.cluster_iam_role_arn,
   ]
@@ -1347,77 +1277,121 @@ module "ebs_kms_key" {
 # Node SG
 resource "aws_security_group" "remote_access" {
   name_prefix = "${local.name}-remote-access"
-  description = "Allow remote SSH access"
+  description = "Allow Remote Web and SSH access"
   vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    description = "SSH access"
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/8"]
-  }
-
-  ingress {
-    description = "argo_cd access"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "argo_cd access HTTPS"
-    from_port   = 8081
-    to_port     = 8081
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  ingress {
-    description = "HTTPS"
-    from_port   = 443
-    to_port     = 443
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    from_port        = 0
-    to_port          = 0
-    protocol         = "-1"
-    cidr_blocks      = ["0.0.0.0/0"]
-    ipv6_cidr_blocks = ["::/0"]
-  }
-
-  tags = merge(local.tags, { Name = "${local.name}-remote" })
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
 }
 
-# check
+resource "aws_vpc_security_group_ingress_rule" "ingress_allow_tcp_22" {
+  security_group_id = aws_security_group.remote_access.id
+  description       = "Ingress Allow TCP Port 22 - SSH"
+
+  from_port   = 22
+  to_port     = 22
+  ip_protocol = "tcp"
+  cidr_ipv4   = "10.0.0.0/8"
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ingress_allow_tcp_8080" {
+  security_group_id = aws_security_group.remote_access.id
+  description       = "Ingress Allow TCP Port 8080 - ArgoCD HTTP"
+
+  from_port   = 8080
+  to_port     = 8080
+  ip_protocol = "tcp"
+  cidr_ipv4   = "10.0.0.0/8"
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ingress_allow_tcp_8081" {
+  security_group_id = aws_security_group.remote_access.id
+  description       = "Ingress Allow TCP Port 8081 - ArgoCD HTTPS"
+
+  from_port   = 8081
+  to_port     = 8081
+  ip_protocol = "tcp"
+  cidr_ipv4   = "10.0.0.0/8"
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ingress_allow_tcp_80" {
+  security_group_id = aws_security_group.remote_access.id
+  description       = "Ingress Allow TCP Port 80 - HTTP"
+
+  from_port   = 80
+  to_port     = 80
+  ip_protocol = "tcp"
+  cidr_ipv4   = "10.0.0.0/8"
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
+}
+
+resource "aws_vpc_security_group_ingress_rule" "ingress_allow_tcp_443" {
+  security_group_id = aws_security_group.remote_access.id
+  description       = "Ingress Allow TCP Port 443 - HTTPS"
+
+  from_port   = 443
+  to_port     = 443
+  ip_protocol = "tcp"
+  cidr_ipv4   = "10.0.0.0/8"
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
+}
+
+resource "aws_vpc_security_group_egress_rule" "egress_allow_all" {
+  security_group_id = aws_security_group.remote_access.id
+  description       = "Egress Allow All"
+
+  from_port   = 0
+  to_port     = 0
+  ip_protocol = "-1"
+  cidr_ipv4   = "0.0.0.0/0"
+
+  tags = merge(
+    local.tags,
+    { Name = "${local.name}-remote" }
+  )
+}
+
+data "aws_iam_policy_document" "ec2_policy" {
+  statement {
+    sid    = "1"
+    effect = "Allow"
+    actions = [
+      "ec2:*",
+    ]
+    resources = [
+      "*",
+    ]
+  }
+}
+
 resource "aws_iam_policy" "node_additional" {
   name        = "${local.name}-additional"
   description = "Example usage of node additional policy"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = [
-          "ec2:*", # "ec2:Describe*" # check
-        ]
-        Effect   = "Allow"
-        Resource = "*"
-      },
-    ]
-  })
+  policy      = data.aws_iam_policy_document.ec2_policy.json
 
   tags = local.tags
 }
@@ -1428,7 +1402,7 @@ data "aws_ami" "eks_default" { # Retrieve the latest EKS optimized AMI
 
   filter {
     name   = "name"
-    values = ["amazon-eks-node-${local.cluster_version}-v*"]
+    values = ["amazon-eks-node-${var.cluster_version}-v*"]
   }
 }
 
@@ -1441,7 +1415,7 @@ data "aws_ami" "eks_default" { # Retrieve the latest EKS optimized AMI
 
 module "aws_load_balancer_controller_irsa_role" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.41.0"
+  version = "5.52.2"
 
   role_name                              = "aws-load-balancer-controller"
   attach_load_balancer_controller_policy = true
@@ -1457,10 +1431,10 @@ module "aws_load_balancer_controller_irsa_role" {
 # Load balancer controller uses tags to discover subnets in which it can in which in can create load balancers
 resource "helm_release" "aws_load_balancer_controller" {
   name       = "aws-load-balancer-controller"
-  repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
-  version    = "1.8.1" # (Chart 1.8.1, LBC 2.8.1) ####### (Chart 1.7.2, LBC 2.7.2) requires Kubernetes 1.22+
+  repository = "https://aws.github.io/eks-charts"
+  version    = "1.11.0"
 
   set {
     name  = "replicaCount" # by default it creates 2 replicas
@@ -1485,13 +1459,13 @@ resource "helm_release" "aws_load_balancer_controller" {
   values = [
     <<-EOF
     nodeSelector:
-      role: "ci-cd"
+      role: "core"
     EOF
   ]
 
   depends_on = [
     module.aws_load_balancer_controller_irsa_role,
-    module.eks # important
+    module.eks
   ]
 }
 
@@ -1500,10 +1474,10 @@ resource "helm_release" "aws_load_balancer_controller" {
 ################################################################################
 
 # Create iam role for service account for the block device
-# IAM additional policy https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2826 # check
+# IAM additional policy https://github.com/terraform-aws-modules/terraform-aws-eks/issues/2826
 module "ebs_csi_driver_irsa" {
   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-  version = "5.41.0"
+  version = "5.52.2"
 
   # create_role      = false
   role_name_prefix = "${module.eks.cluster_name}-ebs-csi"
@@ -1535,7 +1509,7 @@ resource "kubernetes_storage_class_v1" "gp3" {
   volume_binding_mode    = "WaitForFirstConsumer"
 
   parameters = {
-    encrypted = false # check
+    encrypted = false
     fsType    = "ext4"
     type      = "gp3"
   }
@@ -1567,7 +1541,7 @@ resource "null_resource" "update_gp2" {
 
 module "ecr" {
   source  = "terraform-aws-modules/ecr/aws"
-  version = "2.2.1"
+  version = "2.3.1"
 
   repository_name = local.name
 
@@ -1598,105 +1572,49 @@ module "ecr" {
   depends_on = [
     module.eks,
   ]
-
 }
 
 # Jenkins is going to push images to ECR
-resource "aws_iam_policy" "jenkins_ecr" {
-  name        = "jenkinsECRPolicy"
-  path        = "/"
-  description = "Allows Jenkins to push and pull images from ECR"
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:GetRepositoryPolicy",
-          "ecr:DescribeRepositories",
-          "ecr:ListImages",
-          "ecr:DescribeImages",
-          "ecr:BatchGetImage",
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:PutImage"
-        ]
-        Resource = "*"
-      },
+data "aws_iam_policy_document" "ecr_read_write_policy" {
+  statement {
+    sid    = "ECRReadWrite"
+    effect = "Allow"
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:CompleteLayerUpload",
+      "ecr:DescribeImages",
+      "ecr:DescribeRepositories",
+      "ecr:GetAuthorizationToken",
+      "ecr:GetDownloadUrlForLayer",
+      "ecr:GetRepositoryPolicy",
+      "ecr:InitiateLayerUpload",
+      "ecr:ListImages",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
     ]
-  })
+    resources = ["*"]
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "jenkins_ecr_attach" {
-  role       = aws_iam_role.jenkins.name # Assumes `aws_iam_role.jenkins` is defined elsewhere in your Terraform code
-  policy_arn = aws_iam_policy.jenkins_ecr.arn
+resource "aws_iam_policy" "ecr_read_write_policy" {
+  name        = "ECRReadWritePolicy"
+  description = "Allows ECR Get and Put permissions"
+  path        = "/"
+  policy      = data.aws_iam_policy_document.ecr_read_write_policy.json
 }
 
-#####
+resource "aws_iam_role_policy_attachment" "jenkins_ecr_policy_attach" {
+  role       = aws_iam_role.jenkins.name
+  policy_arn = aws_iam_policy.ecr_read_write_policy.arn
+}
 
 # ArgoCD Image Updater is going to read ECR
-resource "aws_iam_policy" "imageupdater_ecr" { # check AmazonEC2ContainerRegistryPowerUser
-  name        = "ImageUpdaterECRpolicy"
-  path        = "/"
-  description = "Allows argoCD to list ECR artifacts" # pending
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",       # req
-          "ecr:BatchCheckLayerAvailability", # req
-          "ecr:GetDownloadUrlForLayer",      # req
-          "ecr:GetRepositoryPolicy",
-          "ecr:DescribeRepositories",
-          "ecr:ListImages",
-          "ecr:DescribeImages",
-          "ecr:BatchGetImage", # req
-          "ecr:InitiateLayerUpload",
-          "ecr:UploadLayerPart",
-          "ecr:CompleteLayerUpload",
-          "ecr:PutImage",
-          "ecr:*",
-          # https://github.com/argoproj/argo-cd/issues/8097
-        ]
-        Resource = "*"
-      },
-    ]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "imageupdater_ecr_attach" {
+# https://github.com/argoproj/argo-cd/issues/8097
+resource "aws_iam_role_policy_attachment" "imageupdater_ecr_policy_attach" {
   role       = aws_iam_role.argocd_image_updater.name
-  policy_arn = aws_iam_policy.imageupdater_ecr.arn
+  policy_arn = aws_iam_policy.ecr_read_write_policy.arn
 }
-
-output "repository_name" {
-  description = "Name of the repository"
-  value       = module.ecr.repository_name
-}
-
-output "repository_arn" {
-  description = "Full ARN of the repository"
-  value       = module.ecr.repository_arn
-}
-
-output "repository_registry_id" {
-  description = "The registry ID where the repository was created"
-  value       = module.ecr.repository_registry_id
-}
-
-output "repository_url" {
-  description = "The URL of the repository (in the form `aws_account_id.dkr.ecr.region.amazonaws.com/repositoryName`)"
-  value       = module.ecr.repository_url
-}
-
 
 ###############################################################################
 # External Secrets Operator
@@ -1706,10 +1624,10 @@ output "repository_url" {
 
 resource "helm_release" "external_secrets" {
   name       = "external-secrets"
-  repository = "https://charts.external-secrets.io"
   chart      = "external-secrets"
-  namespace  = "kube-system" # check
-  version    = "0.9.18"
+  namespace  = "kube-system"
+  repository = "https://charts.external-secrets.io"
+  version    = "0.14.2"
 
   set {
     name  = "clusterName"
@@ -1726,7 +1644,7 @@ resource "helm_release" "external_secrets" {
     <<-EOF
     global:
       nodeSelector:
-        role: "ci-cd"
+        role: "core"
     serviceAccount:
       create: true
       name: "external-secrets"
@@ -1735,209 +1653,246 @@ resource "helm_release" "external_secrets" {
 
   depends_on = [
     helm_release.aws_load_balancer_controller,
-    module.eks # important
+    module.eks
   ]
 }
 
-# sonarqube
-resource "aws_iam_policy" "sonarqube_ssm_read" { # check
-  name = "SSM-for-sonarqube"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
+# argocd
+data "aws_iam_policy_document" "argocd_ssm_read_policy" {
+  statement {
+    sid    = "ArgoCDSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/aws/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/ecr/*"
+    ]
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "sonarqube_read_attach" { # check
-  role       = aws_iam_role.sonarqube.name
-  policy_arn = aws_iam_policy.sonarqube_ssm_read.arn
+resource "aws_iam_policy" "argocd_ssm_read_policy" {
+  name        = "ArgoCDSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.argocd_ssm_read_policy.json
 }
 
-
-# Fluent operator
-resource "aws_iam_policy" "fluent_ssm_read" { # check
-  name = "SSM-for-fluent"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "fluent_read_attach" { # check
-  role       = aws_iam_role.fluent_operator.name
-  policy_arn = aws_iam_policy.fluent_ssm_read.arn
-}
-
-# Fluent bit
-resource "aws_iam_policy" "fluent2_ssm_read" { # check
-  name = "SSM-for-fluent2"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "fluent_read2_attach" { # check
-  role       = aws_iam_role.fluent_operator2.name
-  policy_arn = aws_iam_policy.fluent2_ssm_read.arn
-}
-
-# Elastic eck-pass
-resource "aws_iam_policy" "elastic_ssm_read" { # check
-  name = "SSM-for-elastic"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "elastic_read_attach" { # check
-  role       = aws_iam_role.elastic_operator.name
-  policy_arn = aws_iam_policy.elastic_ssm_read.arn
-}
-
-# Jenkins
-resource "aws_iam_policy" "jenkins_ssm_read" { # check
-  name = "SSM-for-jenkins"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "jenkins_read_attach" { # check
-  role       = aws_iam_role.jenkins.name
-  policy_arn = aws_iam_policy.jenkins_ssm_read.arn
-}
-
-# Django
-resource "aws_iam_policy" "django_ssm_read" { # check
-  name = "SSM-for-django"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "django_read_attach" { # check
-  role       = aws_iam_role.django.name
-  policy_arn = aws_iam_policy.django_ssm_read.arn
-}
-
-# ArgoCD Image Updater
-resource "aws_iam_policy" "imageupdater_ssm_read" { # check
-  name = "SSM-for-argocd-imageupdater"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "imageupdater_read_attach" { # check
-  role       = aws_iam_role.argocd_image_updater.name
-  policy_arn = aws_iam_policy.imageupdater_ssm_read.arn
-}
-
-# ArgoCD Repo
-resource "aws_iam_policy" "argocd_repo_ssm_read" { # check
-  name = "SSM-for-argocd-repo"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "reposerver_read_attach" { # check
+resource "aws_iam_role_policy_attachment" "argocd_ssm_read_attach" {
   role       = aws_iam_role.argocd_repo.name
-  policy_arn = aws_iam_policy.argocd_repo_ssm_read.arn
+  policy_arn = aws_iam_policy.argocd_ssm_read_policy.arn
 }
 
-# Prometheus
-resource "aws_iam_policy" "prometheus_ssm_read" { # check
-  name = "SSM-for-prometheus"
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      "Action" : [
-        "ssm:GetParameter*",
-        "ssm:ListTagsForResource", # check
-        "ssm:DescribeParameters"   # check
-      ],
-      Resource = "arn:aws:ssm:${local.region}:${data.aws_caller_identity.current.account_id}:parameter/*" # check .limit scope accordingly. SSM is region specific
-    }]
-  })
+# argocd image updater
+data "aws_iam_policy_document" "imageupdater_ssm_read_policy" {
+  statement {
+    sid    = "ArgoCDImageUpdaterSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/argo/cd/image_updater/*"
+    ]
+  }
 }
 
-resource "aws_iam_role_policy_attachment" "prometheus_read_attach" { # check
+resource "aws_iam_policy" "imageupdater_ssm_read_policy" {
+  name        = "ArgoCDImageUpdaterSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.imageupdater_ssm_read_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "imageupdater_ssm_read_attach" {
+  role       = aws_iam_role.argocd_image_updater.name
+  policy_arn = aws_iam_policy.imageupdater_ssm_read_policy.arn
+}
+
+# django
+data "aws_iam_policy_document" "django_ssm_read_policy" {
+  statement {
+    sid    = "DjangoSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/app/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "django_ssm_read_policy" {
+  name        = "DjangoSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.django_ssm_read_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "django_ssm_read_attach" {
+  role       = aws_iam_role.django.name
+  policy_arn = aws_iam_policy.django_ssm_read_policy.arn
+}
+
+# elastic eck-pass
+data "aws_iam_policy_document" "elastic_ssm_read_policy" {
+  statement {
+    sid    = "ElasticSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/elastic/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "elastic_ssm_read_policy" {
+  name        = "ElasticSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.elastic_ssm_read_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "elastic_ssm_read_attach" {
+  role       = aws_iam_role.elastic_operator.name
+  policy_arn = aws_iam_policy.elastic_ssm_read_policy.arn
+}
+
+# fluent operator
+data "aws_iam_policy_document" "fluent_ssm_read_policy" {
+  statement {
+    sid    = "FluentSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/elastic/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "fluent_ssm_read_policy" {
+  name        = "FluentSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.fluent_ssm_read_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "fluent_ssm_read_attach" {
+  role       = aws_iam_role.fluent_operator.name
+  policy_arn = aws_iam_policy.fluent_ssm_read_policy.arn
+}
+
+# fluent bit
+resource "aws_iam_role_policy_attachment" "fluentbit_ssm_read_attach" {
+  role       = aws_iam_role.fluent_operator2.name
+  policy_arn = aws_iam_policy.fluent_ssm_read_policy.arn
+}
+
+# jenkins
+data "aws_iam_policy_document" "jenkins_ssm_read_policy" {
+  statement {
+    sid    = "JenkinsSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/app/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/aws/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/ecr/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/jenkins/*"
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/sonar/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "jenkins_ssm_read_policy" {
+  name        = "JenkinsSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.jenkins_ssm_read_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "jenkins_ssm_read_attach" {
+  role       = aws_iam_role.jenkins.name
+  policy_arn = aws_iam_policy.jenkins_ssm_read_policy.arn
+}
+
+# prometheus
+data "aws_iam_policy_document" "prometheus_ssm_read_policy" {
+  statement {
+    sid    = "PrometheusSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/grafana/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "prometheus_ssm_read_policy" {
+  name        = "PrometheusSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.prometheus_ssm_read_policy
+}
+
+resource "aws_iam_role_policy_attachment" "prometheus_ssm_read_attach" {
   role       = aws_iam_role.prometheus.name
-  policy_arn = aws_iam_policy.prometheus_ssm_read.arn
+  policy_arn = aws_iam_policy.prometheus_ssm_read_policy.arn
 }
 
+# sonarqube
+data "aws_iam_policy_document" "sonarqube_ssm_read_policy" {
+  statement {
+    sid    = "SonarqubeSSMReadParameters"
+    effect = "Allow"
+    actions = [
+      "ssm:DescribeParameters",
+      "ssm:GetParameter*",
+      "ssm:ListTagsForResource",
+    ]
+    resources = [
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/sonar/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "sonarqube_ssm_read_policy" {
+  name        = "SonarqubeSSMReadPolicy"
+  description = ""
+  path        = "/"
+  policy      = data.aws_iam_policy_document.sonarqube_ssm_read_policy.json
+}
+
+resource "aws_iam_role_policy_attachment" "sonarqube_ssm_read_attach" {
+  role       = aws_iam_role.sonarqube.name
+  policy_arn = aws_iam_policy.sonarqube_ssm_read_policy.arn
+}
 
 ###############################################################################
 # TF Helpers
@@ -1950,7 +1905,7 @@ resource "null_resource" "update_kubeconfig" {
     cluster_endpoint = module.eks.cluster_endpoint
   }
   provisioner "local-exec" {
-    command = "aws eks update-kubeconfig --name ${local.name} --region ${local.region}"
+    command = "aws eks update-kubeconfig --name ${local.name} --region ${local.aws_region}"
   }
   depends_on = [
     module.eks
@@ -1966,13 +1921,6 @@ resource "null_resource" "update_kubeconfig" {
 # When using API Token authentication, the token should be granted Zone Read, DNS Edit privileges, and access to All zones
 
 # optional: limit which Ingress objects are used as an ExternalDNS source via the ingress-class
-
-## Import environment variables as TF variable
-variable "CFL_API_TOKEN" {
-  description = "API token for Cloudflare"
-  type        = string
-  sensitive   = true
-}
 
 ## Pass CF API token to k8s Secret
 # kubectl create secret generic cloudflare-api-key --from-literal=apiKey=123example -n kube-system
@@ -2001,14 +1949,14 @@ data:
 resource "helm_release" "external_dns" {
   name       = "external-dns"
   chart      = "external-dns"
-  repository = "https://kubernetes-sigs.github.io/external-dns/"
   namespace  = "kube-system"
-  version    = "1.14.5" # Chart 1.14.5, App 0.14.2
+  repository = "https://kubernetes-sigs.github.io/external-dns/"
+  version    = "1.15.2"
 
   values = [
     <<-EOF
     nodeSelector:
-      role: "ci-cd"
+      role: "core"
 
     env:
     - name: CF_API_TOKEN
@@ -2055,7 +2003,7 @@ resource "helm_release" "external_dns" {
   }
 
   set {
-    name  = "serviceAccount.automountServiceAccountToken" # check
+    name  = "serviceAccount.automountServiceAccountToken"
     value = true
   }
 
@@ -2071,21 +2019,11 @@ resource "helm_release" "external_dns" {
   ]
 }
 
-resource "aws_iam_role" "external_dns" { # check
-  name = "external-dns"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "eks.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      },
-    ]
-  })
+resource "aws_iam_role" "external_dns" {
+  name               = "external-dns"
+  description        = ""
+  path               = "/"
+  assume_role_policy = data.aws_iam_policy_document.eks_assume_role_policy.json
 }
 
 ################################################################################
@@ -2121,7 +2059,7 @@ resource "aws_iam_role" "external_dns" { # check
 #  values = [
 #    <<-EOF
 #    nodeSelector:
-#      role: "ci-cd"
+#      role: "core"
 #
 #    EOF
 #  ]
@@ -2192,7 +2130,7 @@ resource "aws_iam_role" "external_dns" { # check
 # Support set the certificateArn for Ingress at the IngressClass level. This feature adds new certificateArn to the IngressClassParams Spec to configure the ARN of the certificates for all Ingresses that belong to IngressClass with this IngressClassParams.
 # https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.1/guide/ingress/cert_discovery/
 
-resource "kubectl_manifest" "ingress_class_params" { # check # pending
+resource "kubectl_manifest" "ingress_class_params" {
   yaml_body = <<-EOT
   apiVersion: elbv2.k8s.aws/v1beta1
   kind: IngressClassParams
@@ -2204,27 +2142,20 @@ resource "kubectl_manifest" "ingress_class_params" { # check # pending
   EOT
 
   depends_on = [
-    helm_release.aws_load_balancer_controller, # check
-    module.acm                                 # check
+    helm_release.aws_load_balancer_controller,
+    module.acm
   ]
 }
 
 ## must be set before tf apply
 # export TF_VAR_CFL_ZONE_ID=123example
 
-## Import environment variables as TF variable
-variable "CFL_ZONE_ID" {
-  description = "Zone ID for Cloudflare"
-  type        = string
-  sensitive   = true
-}
-
 # Create ACM wildcard cert, with DNS validation using Cloudflare
 # if gets stuck `terraform apply -target=module.acm`
 # `terraform taint module.acm`
 module "acm" {
   source  = "terraform-aws-modules/acm/aws"
-  version = "5.0.1"
+  version = "5.1.1"
 
   # ACM cert for subdomains only
   domain_name = "*.${local.domain}" # only for subdomains of *.hansohn.io, TLD is not included by default
@@ -2232,7 +2163,7 @@ module "acm" {
 
   validation_method = "DNS"
 
-  validation_record_fqdns = cloudflare_record.validation[*].hostname
+  validation_record_fqdns = cloudflare_dns_record.validation[*].hostname
 
   wait_for_validation    = true
   create_route53_records = false
@@ -2248,17 +2179,6 @@ module "acm" {
   depends_on = [
     helm_release.aws_load_balancer_controller,
   ]
-
-}
-
-output "distinct_domain_names" {
-  description = "List of distinct domains names used for the validation."
-  value       = module.acm.distinct_domain_names
-}
-
-output "validation_domains" {
-  description = "List of distinct domain validation options. This is useful if subject alternative names contain wildcards."
-  value       = module.acm.validation_domains
 }
 
 ###############################################################################
@@ -2276,22 +2196,20 @@ provider "cloudflare" {
 }
 
 # Validate generated ACM cert by creating validation domain record
-resource "cloudflare_record" "validation" {
+resource "cloudflare_dns_record" "validation" {
   count = length(module.acm.distinct_domain_names)
 
   zone_id = var.CFL_ZONE_ID
   name    = element(module.acm.validation_domains, count.index)["resource_record_name"]
   type    = element(module.acm.validation_domains, count.index)["resource_record_type"]
-  value   = trimsuffix(element(module.acm.validation_domains, count.index)["resource_record_value"], ".") # ensure no trailing periods that could disrupt DNS record creation
+  content = trimsuffix(element(module.acm.validation_domains, count.index)["resource_record_value"], ".")
   ttl     = 60
   proxied = false
 
-  allow_overwrite = true
 
   depends_on = [
     helm_release.aws_load_balancer_controller,
   ]
-
 }
 
 ###############################################################################
@@ -2315,7 +2233,7 @@ resource "random_password" "django_secretkey" {
 
 module "db" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "6.7.0"
+  version = "6.10.0"
 
   identifier = local.name
 
@@ -2327,7 +2245,7 @@ module "db" {
   major_engine_version = "16"         # DB option group
   instance_class       = "db.t4g.micro"
 
-  #kms_key_id        = "arn:aws:kms:${var.aws_region}:${var.account_id}:key/${data.aws_ssm_parameter.kms_keyid.value}"
+  #kms_key_id        = "arn:aws:kms:${local.aws_region}:${var.account_id}:key/${data.aws_ssm_parameter.kms_keyid.value}"
 
   allocated_storage     = 5
   max_allocated_storage = 10
@@ -2359,13 +2277,13 @@ module "db" {
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-  create_cloudwatch_log_group     = false # check
+  create_cloudwatch_log_group     = false
 
   backup_retention_period = 1
   skip_final_snapshot     = true
   deletion_protection     = false
 
-  performance_insights_enabled          = false # check cloudwatch
+  performance_insights_enabled          = false
   performance_insights_retention_period = 7
   create_monitoring_role                = false
   monitoring_interval                   = 0 # 0 disables collecting enhanced metrics
@@ -2396,12 +2314,11 @@ module "db" {
     module.eks,
     #helm_release.aws_load_balancer_controller,
   ]
-
 }
 
 module "security_group" {
   source  = "terraform-aws-modules/security-group/aws"
-  version = "5.1.2"
+  version = "5.3.0"
 
   name        = local.name
   description = "Complete PostgreSQL example security group"
@@ -2419,72 +2336,6 @@ module "security_group" {
   ]
 
   tags = local.tags
-}
-
-output "db_instance_address" {
-  description = "The address of the RDS instance"
-  value       = module.db.db_instance_address
-}
-
-output "db_instance_arn" {
-  description = "The ARN of the RDS instance"
-  value       = module.db.db_instance_arn
-}
-
-output "db_instance_availability_zone" {
-  description = "The availability zone of the RDS instance"
-  value       = module.db.db_instance_availability_zone
-}
-
-output "db_instance_endpoint" {
-  description = "The connection endpoint"
-  value       = split(":", module.db.db_instance_endpoint)[0] # regular output includes `endpoint:port`, this filters out the port
-}
-
-output "db_instance_engine" {
-  description = "The database engine"
-  value       = module.db.db_instance_engine
-}
-
-output "db_instance_engine_version_actual" {
-  description = "The running version of the database"
-  value       = module.db.db_instance_engine_version_actual
-}
-
-output "db_instance_hosted_zone_id" {
-  description = "The canonical hosted zone ID of the DB instance (to be used in a Route 53 Alias record)"
-  value       = module.db.db_instance_hosted_zone_id
-}
-
-output "db_instance_identifier" {
-  description = "The RDS instance identifier"
-  value       = module.db.db_instance_identifier
-}
-
-output "db_instance_resource_id" {
-  description = "The RDS Resource ID of this instance"
-  value       = module.db.db_instance_resource_id
-}
-
-output "db_instance_status" {
-  description = "The RDS instance status"
-  value       = module.db.db_instance_status
-}
-
-output "db_instance_name" {
-  description = "The database name"
-  value       = module.db.db_instance_name
-}
-
-output "db_instance_username" {
-  description = "The master username for the database"
-  value       = module.db.db_instance_username
-  sensitive   = true
-}
-
-output "db_instance_port" {
-  description = "The database port"
-  value       = module.db.db_instance_port
 }
 
 ###############################################################################
@@ -2515,7 +2366,7 @@ resource "random_password" "sonarqube_token" {
 
 module "db_sonarqube" {
   source  = "terraform-aws-modules/rds/aws"
-  version = "6.7.0"
+  version = "6.10.0"
 
   identifier = "${local.name}-rds-sonar"
 
@@ -2527,7 +2378,7 @@ module "db_sonarqube" {
   major_engine_version = "16"         # DB option group
   instance_class       = "db.t4g.micro"
 
-  #kms_key_id        = "arn:aws:kms:${var.aws_region}:${var.account_id}:key/${data.aws_ssm_parameter.kms_keyid.value}"
+  #kms_key_id        = "arn:aws:kms:${local.aws_region}:${var.account_id}:key/${data.aws_ssm_parameter.kms_keyid.value}"
 
   allocated_storage     = 5
   max_allocated_storage = 10
@@ -2559,13 +2410,13 @@ module "db_sonarqube" {
   maintenance_window              = "Mon:00:00-Mon:03:00"
   backup_window                   = "03:00-06:00"
   enabled_cloudwatch_logs_exports = ["postgresql", "upgrade"]
-  create_cloudwatch_log_group     = false # check
+  create_cloudwatch_log_group     = false
 
   backup_retention_period = 1
   skip_final_snapshot     = true
   deletion_protection     = false
 
-  performance_insights_enabled          = false # check cloudwatch
+  performance_insights_enabled          = false
   performance_insights_retention_period = 7
   create_monitoring_role                = false
   monitoring_interval                   = 0 # 0 disables collecting enhanced metrics
@@ -2596,14 +2447,7 @@ module "db_sonarqube" {
     module.eks,
     #helm_release.aws_load_balancer_controller,
   ]
-
 }
-
-output "db_sonar_instance_endpoint" {
-  description = "The connection endpoint"
-  value       = split(":", module.db_sonarqube.db_instance_endpoint)[0] # regular output includes `endpoint:port`, this filters out the port
-}
-
 
 ###############################################################################
 # Generate Random Passwords

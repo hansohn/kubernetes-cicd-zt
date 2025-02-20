@@ -1,20 +1,21 @@
+---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: fluent-all-access
 rules:
-- apiGroups: ["*"]  # Allows access to all API groups
-  resources: ["*"]  # Allows access to all resources
-  verbs: ["*"]      # Allows all actions
+  - apiGroups: ["*"]  # Allows access to all API groups
+    resources: ["*"]  # Allows access to all resources
+    verbs: ["*"]      # Allows all actions
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: fluent-all-access-binding
 subjects:
-- kind: ServiceAccount
-  name: fluent-operator
-  namespace: fluent
+  - kind: ServiceAccount
+    name: fluent-operator
+    namespace: fluent
 roleRef:
   kind: ClusterRole
   name: fluent-all-access
@@ -26,42 +27,19 @@ kind: ClusterRole
 metadata:
   name: fluent2-all-access
 rules:
-- apiGroups: ["*"]  # Allows access to all API groups
-  resources: ["*"]  # Allows access to all resources
-  verbs: ["*"]      # Allows all actions
+  - apiGroups: ["*"]  # Allows access to all API groups
+    resources: ["*"]  # Allows access to all resources
+    verbs: ["*"]      # Allows all actions
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
   name: fluent2-all-access-binding
 subjects:
-- kind: ServiceAccount
-  name: fluent-bit
-  namespace: fluent
+  - kind: ServiceAccount
+    name: fluent-bit
+    namespace: fluent
 roleRef:
   kind: ClusterRole
   name: fluent2-all-access
   apiGroup: rbac.authorization.k8s.io
-#--- # list current RBAC and incorporate
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRole
-#metadata:
-#  name: read-specific-secret
-#rules:
-#- apiGroups: [""]
-#  resources: ["secrets"]
-#  verbs: ["get", "list", "watch"]
-#  resourceNames: ["elasticsearch-es-elastic-user"]  # restrict access to only the elastic secret
-#---
-#apiVersion: rbac.authorization.k8s.io/v1
-#kind: ClusterRoleBinding
-#metadata:
-#  name: read-elastic-secret-binding
-#subjects:
-#- kind: ServiceAccount
-#  name: fluentbit
-#  namespace: fluent
-#roleRef:
-#  kind: ClusterRole
-#  name: read-specific-secret
-#  apiGroup: rbac.authorization.k8s.io
