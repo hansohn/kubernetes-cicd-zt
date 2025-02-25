@@ -9,12 +9,12 @@ data:
   log.level: "trace"
   registries.conf: |
     registries:
-      - api_url: https://${ARGOCD_AWS_ECR_REPO}
+      - api_url: https://${ARGOCD_ENV_CLUSTER_ECR_DOMAIN}
         credentials: ext:/scripts/ecr-login.sh
         credsexpire: 6h
         default: true
         insecure: false
         name: ECR
         ping: true
-        prefix: ${ARGOCD_AWS_ECR_REPO}
+        prefix: ${ARGOCD_ENV_CLUSTER_ECR_DOMAIN}
         tagsortmode: none

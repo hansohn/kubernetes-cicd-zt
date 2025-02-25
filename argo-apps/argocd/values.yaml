@@ -3,14 +3,14 @@ crds:
   keep: false # Delete CRDs on chart uninstall
 
 secret:
-    createSecret: true
-    #githubSecret: "argocd-secrets" # GitHub webhook
-    #argocdServerAdminPassword: "" # ? htpasswd -nbBC 10 "" $ARGO_PWD | tr -d ':\n' | sed 's/$2y/$2a/'
+  createSecret: true
+#   githubSecret: "argocd-secrets" # GitHub webhook
+#   argocdServerAdminPassword: "" # ? htpasswd -nbBC 10 "" $ARGO_PWD | tr -d ':\n' | sed 's/$2y/$2a/'
 
 global:
   domain: argocd.hansohn.io # Used for ingresses, certificates, SSO, notifications, etc. (blank allows all domains) # check if it can be replaced by ingress
-#  image:
-#    tag: "v2.11.4"
+#   image:
+#     tag: "v2.11.4"
   nodeSelector:
     role: core
 
@@ -21,9 +21,9 @@ configs:
     server.insecure: true # Necessary when SSL termination is handled by ALB
     applicationsetcontroller.enable.progressive.syncs: true # ApplicationSet compatible with Progressive Syncs. (SyncWave must use app of apps)
     applicationsetcontroller.default.application.progressing.timeout: 1200 # When using rollingSync, prevent sync timeout error with kube prometheus stack (default 300 seconds)
-  cmp: # ArgoCD cmp "env substitution" plugin. Needed since kustomize can't retrieve remote values (env/secrets/configmaps) for its own installation (only for resulting pods etc.)
+  cmp:  # ArgoCD cmp "env substitution" plugin. Needed since kustomize can't retrieve remote values (env/secrets/configmaps) for its own installation (only for resulting pods etc.)
     create: true
-    plugins: # Plugin yaml files to be added to argocd-cmp-cm
+    plugins:  # Plugin yaml files to be added to argocd-cmp-cm
       substitution:
         generate:
           command: ["/bin/sh", "-c"] # ["/bin/sh"] # kustomize build --load-restrictor LoadRestrictionsNone --enable-helm --output /tmp | envsubst "$AVAILABLE_VARS"
@@ -31,12 +31,12 @@ configs:
             - |
               AVAILABLE_VARS=$(env | cut -d "=" -f 1 | awk '{print "$"$1}' | tr "\n" " ")
               kustomize build --load-restrictor LoadRestrictionsNone --enable-helm | envsubst "$AVAILABLE_VARS"
-        preserveFileMode: true # by default cmp resets file mode
-        allowConcurrency: true # alt approach for cmp https://medium.com/@jojoooo/deploy-infra-stack-using-self-managed-argocd-with-cert-manager-externaldns-external-secrets-op-640fe8c1587b
+        preserveFileMode: true  # by default cmp resets file mode
+        allowConcurrency: true  # alt approach for cmp https://medium.com/@jojoooo/deploy-infra-stack-using-self-managed-argocd-with-cert-manager-externaldns-external-secrets-op-640fe8c1587b
 
 server:
-  ingress: # Working helm ingress with externalDNS as per https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd # no grpc warning errors
-    enabled: false # Configured with ingress.yaml
+  ingress:  # Working helm ingress with externalDNS as per https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd # no grpc warning errors
+    enabled: false  # Configured with ingress.yaml
 #  annotations:
 #    argocd.argoproj.io/sync-wave: "1"
 
@@ -44,18 +44,18 @@ applicationSet:
   enabled: true
 
 dex:
-  enabled: false # This is for SSO
+  enabled: false  # This is for SSO
 
 repoServer:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
   rbac: # check. when restricting, remember restart for deployment argo-cd-argocd-repo-server must be allowed (for the job, that restarts and allows for env to be loaded)
-     - apiGroups:
-       - "*"
-       resources:
-       - "*"
-       verbs:
-       - "*"
+    - apiGroups:
+        - "*"
+      resources:
+        - "*"
+      verbs:
+        - "*"
 
   extraContainers:
     - name: substitution
@@ -66,7 +66,7 @@ repoServer:
           sleep 5
           SERVER_PID=$(ps aux | grep '[a]rgocd-cmp-server' | awk '{print $2}')
           kill -9 $SERVER_PID
-      envFrom: # this loads all the secrets as ENV variables in the cmp plugin container
+      envFrom:  # this loads all the secrets as ENV variables in the cmp plugin container
         - secretRef:
             name: argocd-secrets-global
             optional: true
@@ -74,17 +74,17 @@ repoServer:
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
-        allowPrivilegeEscalation: true # check
+        allowPrivilegeEscalation: true
       volumeMounts:
-        - mountPath: /var/run/argocd
-          name: var-files
-        - mountPath: /home/argocd/cmp-server/plugins
-          name: plugins
-        - mountPath: /home/argocd/cmp-server/config/plugin.yaml
+        - name: var-files
+          mountPath: /var/run/argocd
+        - name: plugins
+          mountPath: /home/argocd/cmp-server/plugins
+        - name: argocd-cmp-cm
+          mountPath: /home/argocd/cmp-server/config/plugin.yaml
           subPath: substitution.yaml  # Maps the specific config file for this plugin
-          name: argocd-cmp-cm
-        - mountPath: /tmp
-          name: cmp-tmp
+        - name: cmp-tmp
+          mountPath: /tmp
 
   volumes:
     - name: argocd-cmp-cm

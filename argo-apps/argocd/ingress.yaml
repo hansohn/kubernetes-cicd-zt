@@ -16,11 +16,11 @@ metadata:
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/ssl-redirect: "443"
     alb.ingress.kubernetes.io/target-type: ip
-    external-dns.alpha.kubernetes.io/hostname: argocd.${ARGOCD_APP_DOMAIN}
+    external-dns.alpha.kubernetes.io/hostname: argocd.${ARGOCD_ENV_CLUSTER_DOMAIN}
 spec:
   ingressClassName: alb
   rules:
-    - host: argocd.${ARGOCD_APP_DOMAIN}
+    - host: argocd.${ARGOCD_ENV_CLUSTER_DOMAIN}
       http:
         paths:
           - path: /

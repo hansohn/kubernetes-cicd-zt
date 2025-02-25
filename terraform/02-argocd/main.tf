@@ -55,21 +55,16 @@ data "terraform_remote_state" "eks" {
 
 # Dynamically load values from argocd's kustomization.yaml
 locals {
-  argocd_config = yamldecode(file("${path.module}/../../argo-apps/argocd/kustomization.yaml"))
-
-  # IDE may show "unresolved reference" even though it's linked correctly in tf.
-  argocd_helm_chart = local.argocd_config.helmCharts[0] # Access the first (or only) element in the list
+  argocd_config     = yamldecode(file("${path.module}/../../argo-apps/argocd/kustomization.yaml"))
+  argocd_helm_chart = local.argocd_config.helmCharts[0]
 }
 
 resource "helm_release" "argo_cd" {
-
-  # IDE may show "unresolved reference" even though it's linked correctly in tf.
-  # referencing kustomization.yaml from argocd (inside /argo-apps/argocd)
-  name       = local.argocd_helm_chart.name        # "argo-cd"
-  repository = local.argocd_helm_chart.repo        # "https://argoproj.github.io/argo-helm"
-  chart      = local.argocd_helm_chart.releaseName # "argo-cd"
-  version    = local.argocd_helm_chart.version     # "6.7.14" # pending reference this dynamically to argo-apps/argocd/config.yaml
-  namespace  = local.argocd_helm_chart.namespace   # "argocd"
+  name       = local.argocd_helm_chart.name
+  repository = local.argocd_helm_chart.repo
+  chart      = local.argocd_helm_chart.releaseName
+  version    = local.argocd_helm_chart.version
+  namespace  = local.argocd_helm_chart.namespace
 
   #wait = false # might be needed!
 
