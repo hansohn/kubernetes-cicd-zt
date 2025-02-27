@@ -15,11 +15,11 @@ metadata:
     alb.ingress.kubernetes.io/healthcheck-path: "/login"
     alb.ingress.kubernetes.io/healthcheck-port: "traffic-port"
     alb.ingress.kubernetes.io/success-codes: "200,307"
-    external-dns.alpha.kubernetes.io/hostname: jenkins.${ARGOCD_ENV_CLUSTER_DOMAIN}
+    external-dns.alpha.kubernetes.io/hostname: jenkins.${CLUSTER_DOMAIN}
 spec:
   ingressClassName: alb
   rules:
-    - host: jenkins.${ARGOCD_ENV_CLUSTER_DOMAIN}
+    - host: jenkins.${CLUSTER_DOMAIN}
       http:
         paths:
           - path: /

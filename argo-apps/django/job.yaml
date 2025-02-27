@@ -1,6 +1,6 @@
 ---
 ## Part of ArgoCD Image Updater configuration
-## Adds annotation outside ApplicationSet, since it doesn't allow ${ARGOCD_ENV_CLUSTER_ECR_DOMAIN} replacement
+## Adds annotation outside ApplicationSet, since it doesn't allow ${CLUSTER_ECR_DOMAIN} replacement
 ## See /argocd/applicationset.yaml `preservedFields` definition also required for this workaround
 apiVersion: batch/v1
 kind: Job
@@ -22,6 +22,6 @@ spec:
             - -c
             - |
               kubectl patch application "django" -n argocd --type=merge \
-              -p "{\"metadata\":{\"annotations\":{\"argocd-image-updater.argoproj.io/image-list\":\"django=${ARGOCD_ENV_CLUSTER_ECR_DOMAIN}/${ARGOCD_ENV_CLUSTER_NAME}\"}}}"
+              -p "{\"metadata\":{\"annotations\":{\"argocd-image-updater.argoproj.io/image-list\":\"django=${CLUSTER_ECR_DOMAIN}/${CLUSTER_NAME}\"}}}"
       restartPolicy: Never
 
