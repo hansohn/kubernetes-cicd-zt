@@ -14,7 +14,7 @@ helmCharts:
     includeCRDs: true
 
 resources:
-  - job.yaml
+  # - job.yaml
   - secrets.yaml
   - ingress.yaml
   - rbac.yaml
