@@ -34,8 +34,6 @@ configs:
             - |
               AVAILABLE_VARS=$(env | cut -d "=" -f 1 | awk '{print "$"$1}' | tr "\n" " ")
               kustomize build . --load-restrictor LoadRestrictionsNone --enable-helm | envsubst "$AVAILABLE_VARS"
-        discover:
-          fileName: "kustomization.*"
         preserveFileMode: true  # by default cmp resets file mode
         allowConcurrency: true  # alt approach for cmp https://medium.com/@jojoooo/deploy-infra-stack-using-self-managed-argocd-with-cert-manager-externaldns-external-secrets-op-640fe8c1587b
 
