@@ -20,7 +20,7 @@ metadata:
 spec:
   ingressClassName: alb
   rules:
-    - host: argocd.${ARGOCD_ENV_CLUSTER_DOMAIN}
+    - host: argocd.${CLUSTER_DOMAIN}
       http:
         paths:
           - path: /
