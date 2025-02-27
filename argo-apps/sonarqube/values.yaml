@@ -4,6 +4,9 @@ replicaCount: 1 # value of 0 will not launch any pods
 #deploymentStrategy:
 # priorityClassName: "high-priority"
 
+community:
+  enabled: true
+
 securityContext:
   fsGroup: 0
 #  runAsUser: 0 #
