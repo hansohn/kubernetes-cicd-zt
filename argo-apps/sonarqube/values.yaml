@@ -83,6 +83,13 @@ livenessProbe: # bypass probes for testing purposes, allow for argocd to sync
 #   - name: VARIABLE
 #     value: my-value
 
+## a monitoring passcode needs to be defined in order to get reasonable probe results
+# not setting the monitoring passcode will result in a deployment that will never be ready
+monitoringPasscode: "define_it"
+# Alternatively, you can define the passcode loading it from an existing secret specifying the right key
+# monitoringPasscodeSecretName: "pass-secret-name"
+# monitoringPasscodeSecretKey: "pass-key"
+
 ## Those default are based on the default `Web -Xmx1G -Xms128m` and `CE -Xmx2G -Xms128m` and Search -Xmx2G -Xms2G settings of SQ sub processes
 ## Adjust these values to your needs, you can find more details on the main README of the chart.
 # SONAR_CE_JAVAOPTS # sonar.ce.javaOpts
@@ -127,8 +134,6 @@ serviceAccount:
 ## pod sonarqube-sonarqube-0
 # SONAR_WEB_SYSTEMPASSCODE:     <set to the key 'SONAR_WEB_SYSTEMPASSCODE' in secret 'sonarqube-sonarqube-monitoring-passcode'>
 # Startup probe failed: Get "http://10.0.10.66:9000/api/system/status
-
-
 
 # Default Administrator credentials are still being used. Make sure to change the password or deactivate the account.
 #account:
