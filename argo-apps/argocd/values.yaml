@@ -1,79 +1,66 @@
 ---
 crds:
-  keep: false # Delete CRDs on chart uninstall
-
-secret:
-  createSecret: true
-#   githubSecret: "argocd-secrets" # GitHub webhook
-#   argocdServerAdminPassword: "" # ? htpasswd -nbBC 10 "" $ARGO_PWD | tr -d ':\n' | sed 's/$2y/$2a/'
+  keep: false
 
 global:
-  domain: argocd.hansohn.io # Used for ingresses, certificates, SSO, notifications, etc. (blank allows all domains) # check if it can be replaced by ingress
-#   image:
-#     tag: "v2.11.4"
+  domain: argocd.hansohn.io
   nodeSelector:
     role: core
 
 configs:
-#  cm: # Needed if not using plugin
-#    kustomize.buildOptions: "--load-restrictor LoadRestrictionsNone --enable-helm" # Enable Kustomize to install helm charts
   params:
-    server.insecure: true # Necessary when SSL termination is handled by ALB
+    server.insecure: true
     applicationsetcontroller.enable.progressive.syncs: true # ApplicationSet compatible with Progressive Syncs. (SyncWave must use app of apps)
     applicationsetcontroller.default.application.progressing.timeout: 1200 # When using rollingSync, prevent sync timeout error with kube prometheus stack (default 300 seconds)
-  cmp:  # ArgoCD cmp "env substitution" plugin. Needed since kustomize can't retrieve remote values (env/secrets/configmaps) for its own installation (only for resulting pods etc.)
+  cmp:
     create: true
-    plugins:  # Plugin yaml files to be added to argocd-cmp-cm
+    plugins:
+      envsubst:
+        init:
+          command: ["sh", "-c"]
+          args: ["kustomize build . --load-restrictor LoadRestrictionsNone -o raw-kustomization.yaml"]
+        generate:
+          command: ["sh", "-c"]
+          args: ["envsubst < raw-kustomization.yaml > processed-kustomization.yaml && cp processed-kustomization.yaml /dev/stdout"]
       substitution:
         init:
           command: ["/bin/sh", "-c"]
           args: ["echo initializing..."]
         generate:
-          command: ["/bin/sh", "-c"] # ["/bin/sh"] # kustomize build --load-restrictor LoadRestrictionsNone --enable-helm --output /tmp | envsubst "$AVAILABLE_VARS"
-          args: # --output /tmp
+          command: ["/bin/sh", "-c"]
+          args:
             - |
               AVAILABLE_VARS=$(env | cut -d "=" -f 1 | awk '{print "$"$1}' | tr "\n" " ")
               kustomize build . --load-restrictor LoadRestrictionsNone --enable-helm | envsubst "$AVAILABLE_VARS"
-        preserveFileMode: true  # by default cmp resets file mode
+        preserveFileMode: true
         allowConcurrency: true  # alt approach for cmp https://medium.com/@jojoooo/deploy-infra-stack-using-self-managed-argocd-with-cert-manager-externaldns-external-secrets-op-640fe8c1587b
-
-server:
-  ingress:  # Working helm ingress with externalDNS as per https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd # no grpc warning errors
-    enabled: false  # Configured with ingress.yaml
-#  annotations:
-#    argocd.argoproj.io/sync-wave: "1"
-
-applicationSet:
-  enabled: true
+  secret:
+    createSecret: true
 
 dex:
-  enabled: false  # This is for SSO
+  enabled: false
+
+server:
+  ingress:
+    enabled: false
 
 repoServer:
   annotations:
     argocd.argoproj.io/sync-wave: "-1"
-  rbac: # check. when restricting, remember restart for deployment argo-cd-argocd-repo-server must be allowed (for the job, that restarts and allows for env to be loaded)
-    - apiGroups:
-        - "*"
-      resources:
-        - "*"
-      verbs:
-        - "*"
-
   extraContainers:
     - name: substitution
-      command: [ "/bin/sh", "-c" ]
+      command: ["/bin/sh", "-c"]
       args: # restart argocd-cmp-server (via kill -9) for envFrom to become effective
         - |
           /var/run/argocd/argocd-cmp-server
           sleep 5
           SERVER_PID=$(ps aux | grep '[a]rgocd-cmp-server' | awk '{print $2}')
           kill -9 $SERVER_PID
-      envFrom:  # this loads all the secrets as ENV variables in the cmp plugin container
+      envFrom:
         - secretRef:
             name: argocd-secrets-global
             optional: true
-      image: tbalza/envsubst:latest # pending replace with generic image, install kustomize, helm, envsubst # quay.io/argoproj/argocd # '{{ default .Values.global.image.repository .Values.repoServer.image.repository }}:{{ default (include "argo-cd.defaultTag" .) .Values.repoServer.image.tag }}'
+      image: tbalza/envsubst:latest
       securityContext:
         runAsNonRoot: true
         runAsUser: 999
@@ -85,13 +72,19 @@ repoServer:
           mountPath: /home/argocd/cmp-server/plugins
         - name: argocd-cmp-cm
           mountPath: /home/argocd/cmp-server/config/plugin.yaml
-          subPath: substitution.yaml  # Maps the specific config file for this plugin
+          subPath: substitution.yaml
         - name: cmp-tmp
           mountPath: /tmp
-
   volumes:
     - name: argocd-cmp-cm
       configMap:
         name: argocd-cmp-cm
-    - name: cmp-tmp # scratch space for any temporary processing
+    - name: cmp-tmp
       emptyDir: {}
+  rbac:
+    - apiGroups:
+        - "*"
+      resources:
+        - "*"
+      verbs:
+        - "*"
