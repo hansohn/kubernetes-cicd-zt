@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: restart-argo-cd-argocd-redis-argocd-redis
+  name: restart-argocd-redis-argocd-redis
   namespace: argocd
   annotations:
     argocd.argoproj.io/hook: Sync
@@ -21,7 +21,7 @@ spec:
             - /bin/sh
             - -c
             - |
-              kubectl rollout restart deployment argo-cd-argocd-redis -n argocd;
-              kubectl rollout restart deployment argo-cd-argocd-applicationset-controller -n argocd;
+              kubectl rollout restart deployment argocd-redis -n argocd;
+              kubectl rollout restart deployment argocd-applicationset-controller -n argocd;
               sleep 1
       restartPolicy: Never

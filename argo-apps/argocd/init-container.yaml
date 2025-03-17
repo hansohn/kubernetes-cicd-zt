@@ -2,7 +2,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: argo-cd-argocd-repo-server
+  name: argocd-repo-server
   namespace: argocd
 spec:
   template:

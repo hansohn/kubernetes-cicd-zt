@@ -1,0 +1,176 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-helm
+  namespace: argocd
+
+  # Add this finalizer ONLY if you want these to cascade delete (A cascade delete, deletes both the app and its resources, rather than only the app.)
+  # finalizers:
+  #   - resources-finalizer.argocd.argoproj.io
+
+spec:
+  project: default
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+
+    automated:
+      prune: true
+      selfHeal: true
+
+  source:
+    chart: argo-cd
+    repoURL: https://argoproj.github.io/argo-helm
+    targetRevision: 7.8.11
+
+    # https://github.com/argoproj/argo-helm/tree/main/charts/argo-cd
+    helm:
+      valuesObject:
+        fullnameOverride: argocd
+        global:
+          domain: argocd.hansohn.io
+          nodeSelector:
+            role: core
+        configs:
+          params:
+            server.insecure: true
+            applicationsetcontroller.enable.progressive.syncs: true # ApplicationSet compatible with Progressive Syncs. (SyncWave must use app of apps)
+            applicationsetcontroller.default.application.progressing.timeout: 1200 # When using rollingSync, prevent sync timeout error with kube prometheus stack (default 300 seconds)
+          cmp:
+            create: true
+            plugins:
+              envsubst:
+                init:
+                  command: ["sh", "-c"]
+                  args: ["kustomize build . --load-restrictor LoadRestrictionsNone -o raw-kustomization.yaml"]
+                generate:
+                  command: ["sh", "-c"]
+                  args: ["envsubst < raw-kustomization.yaml > processed-kustomization.yaml && cp processed-kustomization.yaml /dev/stdout"]
+          secret:
+            createSecret: true
+
+        ## Controller ##
+        controller:
+          # resources:
+          #   limits:
+          #     cpu: 1
+          #     memory: 1024Mi
+          #   requests:
+          #     cpu: 500m
+          #     memory: 1024Mi
+          metrics:
+            enabled: true
+            serviceMonitor:
+              enabled: false  # true
+              namespace: argocd
+              additionalLabels:
+                prometheus.io/scrap-with: kube-prometheus-stack
+
+        ## DEX ##
+        dex:
+          enabled: false
+
+        ## RepoServer ##
+        repoServer:
+          # resources:
+          #   limits:
+          #     cpu: 500m
+          #     memory: 1.5Gi
+          #   requests:
+          #     cpu: 250m
+          #     memory: 512Mi
+          annotations:
+            argocd.argoproj.io/sync-wave: "-1"
+          extraContainers:
+            - name: envsubst
+              command: [/var/run/argocd/argocd-cmp-server]
+              image: tbalza/envsubst:latest
+              envFrom:
+                - secretRef:
+                    name: argocd-secrets-global
+                    optional: true
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 999
+                allowPrivilegeEscalation: true
+              volumeMounts:
+                - mountPath: /var/run/argocd
+                  name: var-files
+                - mountPath: /home/argocd/cmp-server/plugins
+                  name: plugins
+                - mountPath: /tmp
+                  name: tmp
+
+                # Register plugins into sidecar
+                - mountPath: /home/argocd/cmp-server/config/plugin.yaml
+                  subPath: envsubst.yaml
+                  name: cmp-plugin
+
+          volumes:
+            - name: cmp-plugin
+              configMap:
+                name: argocd-cmp-cm
+            # - name: tmp
+            #   emptyDir: {}
+
+          rbac:
+            - apiGroups:
+                - "*"
+              resources:
+                - "*"
+              verbs:
+                - "*"
+
+          metrics:
+            enabled: true
+            serviceMonitor:
+              enabled: false  # true
+              namespace: argocd
+              additionalLabels:
+                prometheus.io/scrap-with: kube-prometheus-stack
+
+        ## Redis ##
+        redis:
+          # resources:
+          #   limits:
+          #     cpu: 120m
+          #     memory: 256Mi
+          #   requests:
+          #     cpu: 120m
+          #     memory: 256Mi
+          metrics:
+            enabled: true
+            serviceMonitor:
+              enabled: false  # true
+              additionalLabels:
+                prometheus.io/scrap-with: kube-prometheus-stack
+              namespace: argocd
+
+        ## Server ##
+        server:
+          # resources:
+          #   limits:
+          #     cpu: 400m
+          #     memory: 512Mi
+          #   requests:
+          #     cpu: 400m
+          #     memory: 512Mi
+
+          # GKE Ingress
+          service:
+            annotations:
+              cloud.google.com/neg: '{"ingress": true}'
+              cloud.google.com/backend-config: '{"default": "backend-config-argocd"}'
+          metrics:
+            enabled: true
+            serviceMonitor:
+              enabled: false  # true
+              additionalLabels:
+                prometheus.io/scrap-with: kube-prometheus-stack
+              namespace: argocd
+
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: argocd
