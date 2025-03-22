@@ -819,7 +819,7 @@ data "aws_iam_policy_document" "argocd_repo_assume_role_policy" {
       test     = "StringEquals"
       variable = "${replace(module.eks.cluster_oidc_issuer_url, "https://", "")}:sub"
       values = [
-        "system:serviceaccount:argocd:argo-cd-argocd-repo-server" # "namespace:service-account-name"
+        "system:serviceaccount:argocd:argocd-repo-server" # "namespace:service-account-name"
       ]
     }
   }
