@@ -90,7 +90,7 @@ spec:
               envFrom:
                 - secretRef:
                     name: argocd-secrets-global
-                    # optional: true
+                    optional: true
               securityContext:
                 runAsNonRoot: true
                 runAsUser: 999
