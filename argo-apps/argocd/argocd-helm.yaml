@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: argocd-helm
+  name: argocd
   namespace: argocd
 
   # Add this finalizer ONLY if you want these to cascade delete (A cascade delete, deletes both the app and its resources, rather than only the app.)
@@ -48,6 +48,8 @@ spec:
                 generate:
                   command: ["sh", "-c"]
                   args: ["envsubst < raw-kustomization.yaml > processed-kustomization.yaml && cp processed-kustomization.yaml /dev/stdout"]
+                discover:
+                  fileName: "kustomization.*"
           secret:
             createSecret: true
 
@@ -112,8 +114,6 @@ spec:
             - name: cmp-plugin
               configMap:
                 name: argocd-cmp-cm
-            # - name: tmp
-            #   emptyDir: {}
 
           rbac:
             - apiGroups:
