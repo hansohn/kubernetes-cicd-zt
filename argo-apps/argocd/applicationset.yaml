@@ -80,20 +80,20 @@ spec:
             - /spec/claimRef/resourceVersion
             - /spec/claimRef/uid
             - /status/lastPhaseTransitionTime
-      syncPolicy:
-        #preserveResourcesOnDeletion: false
-        automated:
-          selfHeal: true
-          prune: true # (disable when testing cmp plugin) enables the deletion of resources that are no longer in source
-        retry:
-          limit: 5
-          backoff:
-            duration: 5s
-            maxDuration: 5m0s
-            factor: 2
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-          - ServerSideDiff=true
-          - RespectIgnoreDifferences=true # (custom diffing) fixes syncing error: .status.lastPhaseTransitionTime: field not declared in schema (related to django PV)
-          #- PruneLast=true # prometheus-kube-stack sync fix
+      # syncPolicy:
+      #   #preserveResourcesOnDeletion: false
+      #   automated:
+      #     selfHeal: true
+      #     prune: true # (disable when testing cmp plugin) enables the deletion of resources that are no longer in source
+      #   retry:
+      #     limit: 5
+      #     backoff:
+      #       duration: 5s
+      #       maxDuration: 5m0s
+      #       factor: 2
+      #   syncOptions:
+      #     - CreateNamespace=true
+      #     - ServerSideApply=true
+      #     - ServerSideDiff=true
+      #     - RespectIgnoreDifferences=true # (custom diffing) fixes syncing error: .status.lastPhaseTransitionTime: field not declared in schema (related to django PV)
+      #     #- PruneLast=true # prometheus-kube-stack sync fix
