@@ -38,8 +38,8 @@ spec:
         configs:
           params:
             server.insecure: true
-            # applicationsetcontroller.enable.progressive.syncs: true # ApplicationSet compatible with Progressive Syncs. (SyncWave must use app of apps)
-            # applicationsetcontroller.default.application.progressing.timeout: 1200 # When using rollingSync, prevent sync timeout error with kube prometheus stack (default 300 seconds)
+            applicationsetcontroller.enable.progressive.syncs: true # ApplicationSet compatible with Progressive Syncs. (SyncWave must use app of apps)
+            applicationsetcontroller.default.application.progressing.timeout: 1200 # When using rollingSync, prevent sync timeout error with kube prometheus stack (default 300 seconds)
           cmp:
             create: true
             plugins:
