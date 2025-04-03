@@ -69,8 +69,8 @@ spec:
         repoURL: https://github.com/hansohn/kubernetes-cicd-zt.git # git@github.com:hansohn/kubernetes-cicd.git # check
         targetRevision: refactor-terraform
         path: '{{.path.path}}'
-        plugin: # maybe disabling this allows for git writeback (instead of kustomization)? use discover instead? # image updater kustomization writeback ignores this
-          name: envsubst
+        # plugin: # maybe disabling this allows for git writeback (instead of kustomization)? use discover instead? # image updater kustomization writeback ignores this
+        #   name: envsubst
       destination:
         server: https://kubernetes.default.svc # pending make dynamic from repo files
         namespace: '{{.path.basename}}'
