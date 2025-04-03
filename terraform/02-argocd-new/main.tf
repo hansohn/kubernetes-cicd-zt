@@ -66,11 +66,41 @@ resource "helm_release" "argocd" {
   namespace  = local.argocd_config.metadata.namespace
 
   create_namespace = true
-  values           = [yamlencode(local.argocd_config.spec.source.helm.valuesObject)]
+  # values           = [yamlencode(local.argocd_config.spec.source.helm.valuesObject)]
 
   set {
     name  = "repoServer.serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = data.terraform_remote_state.eks.outputs.argo_cd_repo_iam_role_arn
+  }
+
+  set {
+    name  = "fullnameOverride"
+    value = "argocd"
+  }
+
+  set {
+    name  = "applicationSet.enabled"
+    value = "false"
+  }
+
+  set {
+    name  = "notifications.enabled"
+    value = "false"
+  }
+
+  set {
+    name  = "dex.enabled"
+    value = "false"
+  }
+
+  set {
+    name  = "configs.cm.kustomize\\.buildOptions"
+    value = "--load-restrictor LoadRestrictionsNone"
+  }
+
+  set {
+    name  = "configs.cm.timeout\\.reconciliation"
+    value = "10s"
   }
 
   provisioner "local-exec" {
@@ -89,13 +119,13 @@ resource "helm_release" "argocd" {
 ## Uses directory generator to dynamically create argo-apps in subdirectories
 ## Kustomize uses helmChart for 3rd party charts with local repo overrides (values.yaml) and load additional k8s manifests
 
-resource "kubectl_manifest" "example_applicationset" {
-  yaml_body = file("${path.module}/../../argo-apps/argocd/applicationset.yaml")
-
-  depends_on = [
-    helm_release.argocd
-  ]
-}
+# resource "kubectl_manifest" "example_applicationset" {
+#   yaml_body = file("${path.module}/../../argo-apps/argocd/applicationset.yaml")
+# 
+#   depends_on = [
+#     helm_release.argocd
+#   ]
+# }
 
 # print argocd password after tf apply
 resource "null_resource" "get_argocd_admin_password" {

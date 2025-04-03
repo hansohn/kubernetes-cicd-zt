@@ -1,0 +1,10 @@
+apiVersion: v1
+data:
+  application.resourceTrackingMethod: annotation
+  admin.enabled: 'true'
+  statusbadge.enabled: 'true'
+  users.anonymous.enabled: 'false'
+  url: https://argocd.hansohn.io
+kind: ConfigMap
+metadata:
+  name: argocd-cm

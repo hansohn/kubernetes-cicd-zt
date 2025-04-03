@@ -11,14 +11,16 @@ metadata:
 
 spec:
   project: default
-  # syncPolicy:
-  #   syncOptions:
-  #     - CreateNamespace=true
-  #     - PrunePropagationPolicy=foreground
-
-  #   automated:
-  #     prune: false
-  #     selfHeal: true
+  syncPolicy:
+    automated:
+      allowEmpty: false
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - Validate=true
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
 
   source:
     chart: argo-cd
@@ -48,8 +50,8 @@ spec:
                 generate:
                   command: ["sh", "-c"]
                   args: ["envsubst < raw-kustomization.yaml > processed-kustomization.yaml && cp processed-kustomization.yaml /dev/stdout"]
-                discover:
-                  fileName: "kustomization.*"
+                # discover:
+                #   fileName: "kustomization.*"
           secret:
             createSecret: true
 
@@ -123,9 +125,9 @@ spec:
               verbs:
                 - "*"
 
-          # service:
-          #   annotations:
-          #     app.kubernetes.io/instance: argocd
+          service:
+            annotations:
+              app.kubernetes.io/instance: argocd
           metrics:
             enabled: true
             serviceMonitor:

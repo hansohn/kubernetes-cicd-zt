@@ -1696,6 +1696,7 @@ data "aws_iam_policy_document" "imageupdater_ssm_read_policy" {
     ]
     resources = [
       "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/argo/cd/image_updater/*",
+      "arn:aws:ssm:${local.aws_region}:${local.aws_account_id}:parameter/cluster/*",
     ]
   }
 }
