@@ -4,8 +4,8 @@ kind: ApplicationSet
 metadata:
   name: cluster-addons
   namespace: argocd
-#  finalizers:
-#    - resources-finalizer.argocd.argoproj.io
+  finalizers:
+  - resources-finalizer.argocd.argoproj.io
 spec:
   preservedFields:
     annotations:
@@ -84,7 +84,7 @@ spec:
         #preserveResourcesOnDeletion: false
         automated:
           selfHeal: true
-          # prune: true # (disable when testing cmp plugin) enables the deletion of resources that are no longer in source
+          prune: true # (disable when testing cmp plugin) enables the deletion of resources that are no longer in source
         retry:
           limit: 5
           backoff:
@@ -93,7 +93,7 @@ spec:
             factor: 2
         syncOptions:
           - CreateNamespace=true
-          # - ServerSideApply=true
-          # - ServerSideDiff=true
+          - ServerSideApply=true
+          - ServerSideDiff=true
           - RespectIgnoreDifferences=true # (custom diffing) fixes syncing error: .status.lastPhaseTransitionTime: field not declared in schema (related to django PV)
           #- PruneLast=true # prometheus-kube-stack sync fix
