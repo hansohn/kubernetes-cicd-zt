@@ -23,7 +23,7 @@ spec:
       - PruneLast=true
 
   source:
-    chart: argo/argo-cd
+    chart: argo-cd
     repoURL: https://argoproj.github.io/argo-helm
     targetRevision: 7.8.22
 
